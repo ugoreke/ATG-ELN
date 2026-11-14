@@ -1,0 +1,1603 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>ATG ELN</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: split bench. Entry rail + open notebook page; one pane under 900px. Tool dock sits on the right edge in landscape, along the bottom in portrait. */
+:root{
+  --bg:#ECEFF3; --surface:#FFFFFF; --surface-2:#F5F6F9; --ink:#15171C; --muted:#5A6170; --line:#D3D8E0;
+  --accent:#4549D1; --accent-ink:#FFFFFF; --accent-soft:#E3E4FA;
+  --rec:#CC3527; --rec-soft:#FBE3E0; --ok:#1C7448; --ok-soft:#DAF0E3; --warn:#8F5B00; --warn-soft:#FBEFD6;
+  --scrim:rgba(18,20,28,.45); --paper:#FFFFFF; --paper-rule:#DCE6F5;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --tap:60px; --r:14px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#101217; --surface:#191C23; --surface-2:#20242C; --ink:#E7E9EE; --muted:#9BA2AF; --line:#313643;
+  --accent:#9095FF; --accent-ink:#0D0F2E; --accent-soft:#2A2C57;
+  --rec:#FF6E5E; --rec-soft:#3D1F1C; --ok:#5ED39C; --ok-soft:#173428; --warn:#E6B54A; --warn-soft:#3A2E14;
+  --scrim:rgba(0,0,0,.6); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#101217; --surface:#191C23; --surface-2:#20242C; --ink:#E7E9EE; --muted:#9BA2AF; --line:#313643;
+  --accent:#9095FF; --accent-ink:#0D0F2E; --accent-soft:#2A2C57;
+  --rec:#FF6E5E; --rec-soft:#3D1F1C; --ok:#5ED39C; --ok-soft:#173428; --warn:#E6B54A; --warn-soft:#3A2E14;
+  --scrim:rgba(0,0,0,.6); color-scheme:dark}
+
+html{height:100%;box-sizing:border-box}
+*,*::before,*::after{box-sizing:border-box}
+body{height:100%;background:var(--bg);color:var(--ink);font:17px/1.45 var(--f-body);-webkit-tap-highlight-color:transparent;overflow:hidden}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* buttons */
+.btn{white-space:nowrap;min-height:var(--tap);min-width:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:0 20px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface);font-family:var(--f-display);font-weight:600;font-size:1.02rem;font-stretch:95%;letter-spacing:.01em;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.danger{color:var(--rec);border-color:var(--rec)}
+.btn.danger.armed{background:var(--rec);color:var(--surface)}
+.btn.icon{padding:0;width:var(--tap)}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn.small{min-height:48px;min-width:48px;padding:0 14px;font-size:.95rem}
+
+/* app shell */
+#app{height:var(--app-h,100%);max-height:100%;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
+@media (min-width:900px){#app{grid-template-columns:clamp(290px,30vw,370px) minmax(0,1fr)}}
+@media (max-width:899px){#app.editing .rail{display:none} #app:not(.editing) .editor{display:none}}
+@media (min-width:900px){.only-narrow{display:none!important}}
+
+/* rail */
+.rail{display:flex;flex-direction:column;min-height:0;background:var(--surface-2);border-right:1px solid var(--line)}
+.rail-head{display:flex;flex-direction:column;gap:12px;padding-block:18px 12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.9rem;letter-spacing:.02em;line-height:1}
+.brand small{display:block;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+.search{width:100%;min-height:52px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);padding:0 16px}
+.list{flex:1;min-height:0;overflow-y:auto;padding-block:10px 24px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
+.item{display:grid;gap:6px;text-align:left;padding:14px 16px;border-radius:var(--r);border:1.5px solid transparent;background:transparent;min-height:72px}
+.item:hover{background:var(--surface)}
+.item.on{background:var(--surface);border-color:var(--accent)}
+.item .t{font-family:var(--f-display);font-weight:650;font-stretch:88%;font-size:1.08rem;line-height:1.2;overflow-wrap:anywhere}
+.item .m{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;font-size:.86rem;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;font-size:.8rem;font-weight:700;letter-spacing:.02em;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.newbtn{margin-top:6px;min-height:76px;border-style:dashed;border-width:2px;font-size:1.15rem;color:var(--accent);border-color:var(--accent);background:transparent}
+.newbtn svg.i{width:30px;height:30px}
+.note{color:var(--muted);font-size:.95rem;padding:12px 4px;line-height:1.5}
+
+/* editor */
+.editor{display:grid;min-height:0;min-width:0;overflow:hidden;background:var(--surface);grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"head" "lines" "comp" "dock"}
+@media (orientation:landscape) and (min-width:640px){
+  .editor{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"head head" "lines dock" "comp dock"}
+}
+/* portrait and phones: the text box takes the tool row's place while it is open */
+@media not all and (orientation:landscape) and (min-width:640px){
+  .editor.composing .dock{display:none}
+  .comp{padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+}
+.ed-head{grid-area:head;display:flex;flex-direction:column;gap:10px;padding-block:14px 12px;border-bottom:1px solid var(--line);min-width:0}
+.ed-row{display:flex;align-items:center;gap:10px;min-width:0}
+.title{flex:1;min-width:0;min-height:var(--tap);border:1.5px solid transparent;border-radius:12px;background:transparent;padding:0 10px;font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:1.55rem;letter-spacing:.005em}
+.title:hover{border-color:var(--line)} .title:focus{border-color:var(--accent);outline:none;background:var(--surface-2)}
+.ed-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:.88rem;color:var(--muted);padding-left:10px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.pchip{flex:none;display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface-2);font-weight:700;font-size:.92rem}
+.pchip.add{border-style:dashed;color:var(--accent);border-color:var(--accent);background:transparent}
+.pchip svg.i{width:20px;height:20px}
+.save{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.04em}
+.save.err{color:var(--rec)}
+
+.lines{grid-area:lines;overflow-y:auto;min-height:0;padding-block:8px 28px;overscroll-behavior:contain}
+.day{display:flex;align-items:baseline;gap:12px;padding:22px 0 8px;border-bottom:2px solid var(--ink);margin-bottom:2px}
+.day b{font-family:var(--f-display);font-weight:800;font-stretch:78%;font-size:1.2rem;letter-spacing:.04em;text-transform:uppercase}
+.day span{font-family:var(--f-mono);font-size:.82rem;color:var(--muted)}
+.line{display:grid;grid-template-columns:4.6ch minmax(0,1fr);gap:4px 14px;padding:12px 8px;border-bottom:1px solid var(--line);border-radius:4px}
+.line.sel{background:var(--accent-soft);border-radius:10px;border-bottom-color:transparent}
+.line.new-since .tm::after{content:"";display:block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-top:6px}
+.line.done .tm{color:var(--ok)}
+.tm{font-family:var(--f-mono);font-size:.84rem;color:var(--muted);padding-top:6px;font-variant-numeric:tabular-nums}
+.body{min-width:0;display:flex;flex-direction:column;gap:8px}
+.ta{width:100%;max-width:72ch;border:0;background:transparent;resize:none;padding:4px 0;line-height:1.5;overflow:hidden;min-height:1.6em;font-size:1.06rem}
+.ta:focus{outline:none}
+.ta.cap{font-size:.95rem;color:var(--muted)}
+.ta.cap:focus{color:var(--ink)}
+.shot{display:block;max-width:min(100%,560px);max-height:420px;width:auto;border-radius:10px;border:1px solid var(--line);cursor:zoom-in;background:var(--surface-2)}
+.shot.ink{background:var(--paper)}
+.shot.pending{opacity:.55}
+.trans{font-size:.95rem;border-left:3px solid var(--accent);padding:2px 0 2px 12px;color:var(--ink);white-space:pre-wrap;max-width:72ch}
+.acts{display:none;flex-wrap:wrap;gap:8px}
+.line.sel .acts{display:flex}
+.fixnote{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:.9rem;color:var(--ok);max-width:72ch}
+.fixnote .mono{font-size:.8rem}
+.fixnote .help{flex-basis:100%;color:var(--muted);font-size:.85rem}
+.unsure{flex-basis:100%;min-width:0;max-width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--warn-soft);color:var(--ink)}
+.unsure .q{flex-basis:100%;font-size:.95rem}
+.unsure .btn{min-height:46px;white-space:normal;text-align:left}
+.unsure .other{display:flex;gap:6px;flex:1 1 220px;min-width:0}
+.unsure .other input{flex:1;width:0;min-width:0;min-height:46px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);padding:0 12px}
+
+/* composer */
+.comp{grid-area:comp;border-top:1px solid var(--line);background:var(--surface-2);padding-block:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.comp-ta{width:100%;min-height:96px;max-height:38vh;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);padding:12px 14px;resize:none;font-size:1.1rem;line-height:1.5}
+.comp-ta:focus{border-color:var(--accent);outline:none}
+.comp-row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.comp-row .grow{flex:1}
+.status{display:flex;align-items:center;gap:10px;font-size:.92rem;color:var(--muted);min-height:24px}
+.status.rec{color:var(--rec);font-weight:700}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--rec);flex:none}
+.status.rec .dot{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+.interim{font-style:italic;color:var(--muted);font-size:1rem}
+.hint{background:var(--warn-soft);color:var(--warn);border-radius:12px;padding:12px 14px;font-size:.95rem;line-height:1.45}
+
+/* dock */
+.dock{grid-area:dock;display:flex;gap:8px;padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface)}
+.tool{flex:1;min-height:76px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface-2);font-family:var(--f-display);font-weight:650;font-stretch:90%;font-size:.95rem;touch-action:manipulation;padding:6px}
+.tool svg.i{width:30px;height:30px}
+.tool:active{transform:scale(.97)}
+.tool.rec{background:var(--rec);border-color:var(--rec);color:var(--surface)}
+.tool[disabled]{opacity:.4}
+@media (orientation:landscape) and (min-width:640px){
+  .dock{flex-direction:column;border-top:0;border-left:1px solid var(--line);padding-block:12px;padding-left:12px;width:calc(124px + env(safe-area-inset-right,0px));min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  .tool{flex:1 1 0;min-height:58px;max-height:118px}
+}
+@media (orientation:landscape) and (max-height:520px){
+  :root{--tap:52px}
+  .tool{min-height:52px;gap:2px;font-size:.82rem} .tool svg.i{width:24px;height:24px}
+  .dock{width:calc(104px + env(safe-area-inset-right,0px));gap:6px;padding-block:8px}
+  .ed-head{padding-block:8px;gap:6px} .title{font-size:1.25rem}
+  .comp-ta{min-height:64px}
+}
+
+/* empty editor */
+.blank{grid-area:lines;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:18px;padding-block:40px;max-width:46ch}
+.blank h2{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:2rem;line-height:1.1;text-wrap:balance}
+.blank p{margin:0;color:var(--muted)}
+
+/* sheets */
+.sheet{position:fixed;inset:0;z-index:40;display:flex;justify-content:flex-end;background:var(--scrim)}
+.panel{width:min(600px,100%);height:100%;background:var(--surface);display:flex;flex-direction:column;min-height:0;box-shadow:-12px 0 40px rgba(0,0,0,.18)}
+.p-head{display:flex;align-items:center;gap:12px;padding-top:calc(12px + env(safe-area-inset-top,0px));padding-bottom:12px;border-bottom:1px solid var(--line)}
+.p-head h2{flex:1;margin:0;font-family:var(--f-display);font-weight:750;font-stretch:85%;font-size:1.35rem;line-height:1.2;min-width:0;overflow-wrap:anywhere}
+.p-body{flex:1;min-height:0;overflow-y:auto;padding-block:16px calc(28px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:16px}
+.p-body h3{margin:8px 0 0;font-family:var(--f-display);font-weight:750;font-stretch:85%;font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.field{display:flex;flex-direction:column;gap:8px}
+.field label{font-weight:700}
+.field .help{font-size:.88rem;color:var(--muted)}
+select.sel{min-height:var(--tap);border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);padding:0 14px;font-size:1rem}
+textarea.box{min-height:160px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);padding:12px;resize:vertical;line-height:1.45}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:var(--tap);padding:0 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);text-align:left}
+.toggle .sw{width:54px;height:32px;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.toggle .sw::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:var(--surface);transition:transform .15s}
+.toggle[aria-checked="true"] .sw{background:var(--accent)}
+.toggle[aria-checked="true"] .sw::after{transform:translateX(22px)}
+.vadd{display:flex;gap:10px}
+.vadd input{flex:1;min-width:0;min-height:var(--tap);border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);padding:0 14px}
+.vadd input:focus{border-color:var(--accent);outline:none}
+.terms{display:flex;flex-wrap:wrap;gap:8px}
+.term{display:inline-flex;align-items:center;max-width:100%;min-height:48px;padding-left:14px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface-2);font-family:var(--f-mono);font-size:.9rem}
+.term>span{min-width:0;overflow-wrap:anywhere}
+.term button{width:46px;height:46px;border:0;background:transparent;border-radius:50%;display:grid;place-items:center;color:var(--muted);flex:none}
+.term button svg{width:18px;height:18px}
+.term.sug{border-style:dashed;border-color:var(--accent)} .term.sug button{color:var(--accent)}
+.prow{display:flex;align-items:center;gap:12px;min-height:var(--tap);padding:8px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);text-align:left;width:100%}
+.prow .nm{flex:1;min-width:0;font-weight:700;overflow-wrap:anywhere}
+.prow .ck{width:30px;height:30px;border-radius:8px;border:2px solid var(--line);display:grid;place-items:center;flex:none}
+.prow.on{border-color:var(--accent);background:var(--accent-soft)}
+.prow.on .ck{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.prow .ck svg{width:20px;height:20px;stroke-width:3}
+.pgroup{display:flex;flex-direction:column;gap:8px}
+.doc{font-size:1rem;line-height:1.55;max-width:72ch}
+.doc h4{font-family:var(--f-display);font-weight:750;font-stretch:88%;font-size:1.12rem;margin:18px 0 6px}
+.doc p{margin:6px 0}
+.doc ul,.doc ol{margin:6px 0;padding-left:1.4em}
+.doc li{margin:3px 0}
+.tbl{overflow-x:auto;margin:8px 0;border:1px solid var(--line);border-radius:10px}
+.tbl table{border-collapse:collapse;font-size:.9rem;min-width:100%}
+.tbl td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top;font-variant-numeric:tabular-nums}
+.tbl tr:first-child td{font-weight:700;background:var(--surface-2)}
+pre.raw{white-space:pre;overflow-x:auto;font-family:var(--f-mono);font-size:.78rem;line-height:1.45;background:var(--surface-2);border-radius:10px;padding:12px;margin:0}
+.answer{white-space:pre-wrap;line-height:1.55;background:var(--surface-2);border-radius:12px;padding:14px 16px;min-height:3em}
+.byline{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
+/* Ask chat: the sheet follows the visible height so the keyboard can't cover Send */
+.sheet.ask{height:var(--app-h,100%);bottom:auto}
+.sheet.ask .p-body{overflow:hidden;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));gap:12px}
+.ask-log{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.ask-comp{display:flex;flex-direction:column;gap:10px}
+.ask-comp textarea.box{min-height:72px;max-height:30vh}
+.msg{border-radius:12px;padding:12px 14px;line-height:1.5;overflow-wrap:anywhere;min-width:0}
+.msg.user{align-self:flex-end;max-width:88%;background:var(--accent-soft);white-space:pre-wrap}
+.msg.claude{background:var(--surface-2)}
+.msg.claude .doc{max-width:none}
+.msg.err{border:1.5px dashed var(--muted);display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-weight:700}
+.msg.info{color:var(--muted);font-size:.9rem;padding-block:0}
+.askq p{margin:6px 0}
+.askq .opts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.askq .btn{white-space:normal;text-align:left;background:var(--surface)}
+.askq .btn[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.meta-grid{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;font-size:.9rem}
+.meta-grid dt{color:var(--muted)} .meta-grid dd{margin:0;overflow-wrap:anywhere}
+
+/* drawing */
+.draw{position:fixed;inset:0;z-index:50;background:var(--surface);display:flex;flex-direction:column}
+.draw-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;border-bottom:1px solid var(--line)}
+.draw-bar .sp{flex:1}
+.swatch{width:var(--tap);height:var(--tap);border-radius:14px;border:2px solid var(--line);display:grid;place-items:center;background:var(--surface-2)}
+.swatch i{width:24px;height:24px;border-radius:50%;display:block}
+.swatch.on{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+.swatch b{display:block;border-radius:999px;background:currentColor;width:26px}
+.paper{flex:1;min-height:0;position:relative;margin:12px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px));border-radius:12px;border:1px solid var(--line);overflow:hidden;background-color:var(--paper);background-image:repeating-linear-gradient(to bottom,transparent 0 35px,var(--paper-rule) 35px 36px)}
+.paper canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+
+.viewer{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.viewer img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px;background:#fff}
+.viewer .btn{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px))}
+
+.toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:80;max-width:min(560px,calc(100% - 32px));background:var(--ink);color:var(--surface);padding:14px 18px;border-radius:14px;font-size:.98rem;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+[hidden]{display:none!important}
+@media (max-width:600px){
+  .title{font-size:1.2rem;padding:0 6px}
+  #askBtn{padding:0;width:var(--tap)} #askBtn .lbl{display:none}
+  #created{display:none}
+  .ed-head{padding-block:8px;gap:6px}
+  .comp-row.main{flex-wrap:nowrap}
+  .comp-row.main .grow{display:none}
+  .comp-row.main .btn:not(.primary){padding:0;width:var(--tap)}
+  .comp-row.main .btn .lbl{display:none}
+  .comp-row.main .btn.primary{flex:1}
+  .comp-ta{min-height:64px}
+  .tool{font-size:.8rem;min-height:70px} .dock{gap:6px}
+}
+body.tight .editor.composing .ed-meta,body.tight .editor.composing .chips{display:none}
+body.tight .editor.composing .comp-ta{min-height:54px;max-height:24vh}
+body.tight .editor.composing .ed-head{padding-block:6px}
+.btn.mic.rec{background:var(--rec);border-color:var(--rec);color:var(--surface)}
+.line.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.again{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 0 6px}
+.again .btn{border-style:dashed;border-width:2px;border-color:var(--accent);color:var(--accent);background:transparent}
+/* new entry form */
+.create{grid-area:lines;display:flex;flex-direction:column;gap:14px;padding-block:18px 32px;max-width:640px;min-width:0}
+.create label{font-weight:700}
+.create .title{border-color:var(--line);background:var(--surface-2);font-size:1.35rem}
+.create .help{font-size:.88rem;color:var(--muted);margin-top:-6px}
+.create .btn.primary{min-height:68px;font-size:1.15rem}
+.create h2{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.7rem}
+/* handwriting bottom actions */
+.draw-actions{display:flex;gap:10px;padding-top:0;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.draw-actions .btn{flex:1}
+.draw-actions .btn.primary{flex:1.6}
+.draw .paper{margin-bottom:10px}
+.added{font-family:var(--f-mono);font-size:.8rem;color:var(--ok);align-self:center}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.no-sample .needs-sample{display:none!important}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.btn:active,.tool:active{transform:none}}
+</style>
+
+<div id="app">
+  <aside class="rail" aria-label="Entries">
+    <div class="rail-head gut">
+      <div class="brand">
+        <div><h1>ATG ELN</h1><small id="countline">Bench notebook</small></div>
+        <button class="btn icon" id="openSettings" aria-label="Settings and vocabulary"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      </div>
+      <input class="search" id="search" type="search" placeholder="Search entries" aria-label="Search entries" autocomplete="off">
+    </div>
+    <div class="list gut" id="list"><p class="note">Loading entries…</p></div>
+  </aside>
+
+  <main class="editor" id="editor">
+    <div class="blank gut" id="blank">
+      <h2>Open an entry, or start today's.</h2>
+      <p>Each entry is filled line by line: typed or dictated text, photos and handwritten notes. Ask Claude in any chat to move a day's lines to Benchling.</p>
+      <button class="btn primary" id="blankNew"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New entry</button>
+    </div>
+  </main>
+</div>
+
+<input type="file" id="camInput" accept="image/*" capture="environment" class="vh" tabindex="-1" aria-hidden="true">
+<input type="file" id="libInput" accept="image/*" multiple class="vh" tabindex="-1" aria-hidden="true">
+
+<template id="tpl-editor">
+  <header class="ed-head gut">
+    <div class="ed-row">
+      <button class="btn icon ghost only-narrow" id="back" aria-label="Back to entries"><svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <input class="title" id="title" aria-label="Entry title" placeholder="YYMMDD_Project_Line_Description" autocomplete="off" spellcheck="false">
+      <button class="btn small needs-sample" id="askBtn" aria-label="Ask Claude about this entry"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.8M12 17.2v.1"/></svg><span class="lbl">Ask</span></button>
+      <button class="btn icon ghost" id="moreBtn" aria-label="Entry options"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
+    </div>
+    <div class="ed-meta"><span id="created" class="mono"></span><span id="xfer"></span><span id="saveState" class="save"></span></div>
+    <div class="hint" id="saveBanner" role="alert" hidden></div>
+    <div class="chips" id="chips"></div>
+  </header>
+  <div class="lines gut" id="lines"></div>
+  <section class="comp gut" id="comp" hidden>
+    <div class="status" id="dstatus" hidden><span class="dot"></span><span id="dstatusText">Listening</span></div>
+    <div class="hint" id="dhint" hidden></div>
+    <textarea class="comp-ta" id="compTa" placeholder="Type, or tap Dictate. Enter adds the line." enterkeyhint="enter" aria-label="New line"></textarea>
+    <div class="interim" id="interim" hidden></div>
+    <div class="fixnote" id="compFix" hidden></div>
+    <div class="comp-row main">
+      <button class="btn mic" id="compMic" aria-label="Dictate"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span class="lbl" id="compMicLabel">Dictate</span></button>
+      <button class="btn needs-sample" id="compFixBtn" aria-label="Fix lab terms" title="Fix the text above, or the entry's last line when the box is empty"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg><span class="lbl">Fix terms</span></button>
+      <span class="grow"></span>
+      <button class="btn" id="compCancel" aria-label="Close text box"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg><span class="lbl">Close</span></button>
+      <button class="btn primary" id="compAdd"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add line</button>
+    </div>
+  </section>
+  <nav class="dock gut" aria-label="Add to entry">
+    <button class="tool" id="tText"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Text</button>
+    <button class="tool" id="tDict"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="tDictLabel">Dictate</span></button>
+    <button class="tool" id="tCam"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo</button>
+    <button class="tool" id="tLib"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>Library</button>
+    <button class="tool" id="tDraw"><svg class="i" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>Handwrite</button>
+  </nav>
+</template>
+
+<script>
+(() => {
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pad = n => String(n).padStart(2, "0");
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const yymmdd = d => `${String(d.getFullYear()).slice(2)}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+const hm = iso => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const WD = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const nice = iso => { const d = new Date(iso); return `${WD[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]} ${d.getFullYear()}`; };
+const ICON = {
+  book: '<svg class="i" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7"/></svg>',
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+  check: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  fix: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  read: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 20h6"/></svg>',
+  undo: '<svg class="i" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
+  eraser: '<svg class="i" viewBox="0 0 24 24"><path d="M8 20h12M5.5 14.5l7-7 5 5-6.5 6.5H8z"/></svg>'
+};
+const MODELS = [
+  { id: "quick", label: "Quick (fastest)", opts: { modelTier: "quick" } },
+  { id: "default", label: "Balanced", opts: { modelTier: "default" } },
+  { id: "complex", label: "Most capable", opts: { modelTier: "complex" } },
+  { id: "claude-haiku-5-5", label: "Claude Haiku 5.5", opts: { model: "claude-haiku-5-5", modelTier: "quick" } },
+  { id: "claude-sonnet-5-5", label: "Claude Sonnet 5.5", opts: { model: "claude-sonnet-5-5", modelTier: "default" } },
+  { id: "claude-opus-5-5", label: "Claude Opus 5.5", opts: { model: "claude-opus-5-5", modelTier: "complex" } }
+];
+const TIER_NAME = { quick: "Quick tier", default: "Balanced tier", complex: "Most capable tier" };
+const modelOpts = id => (MODELS.find(m => m.id === id) || MODELS[0]).opts;
+const answeredBy = r => r.modelApplied ? r.modelApplied.replace(/^claude-/, "Claude ").replace(/-(\d+)-(\d+)$/, " $1.$2").replace(/(^|\s)([a-z])/g, (m, s, c) => s + c.toUpperCase()) : (TIER_NAME[r.modelTierApplied] || "Claude");
+
+const state = {
+  db: null, assets: null, sample: null, sampleDenied: false,
+  entries: new Map(), protocols: [], glossary: { terms: [] }, voice: { pairs: [] }, dictation: null,
+  settings: { fixModel: "quick", askModel: "default", autoFix: true, lang: "en-US" },
+  openId: null, loaded: false, filter: "", selected: null
+};
+const app = $("#app");
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg, ms = 4200) {
+  let t = $(".toast"); if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+/* ---------- persistence ---------- */
+const timers = new Map(), inflight = new Set(), dirty = new Set(), creating = new Set(), failed = new Set(), retries = new Map();
+function touch(id) { const e = state.entries.get(id); if (e) e.updatedAt = new Date().toISOString(); }
+function persist(id, delay = 600) {
+  touch(id); setSave("Saving…");
+  clearTimeout(timers.get(id));
+  timers.set(id, setTimeout(() => { timers.delete(id); flush(id); }, delay));
+}
+async function flush(id) {
+  if (!state.db) return;
+  if (inflight.has(id) || creating.has(id)) { dirty.add(id); return; }
+  const e = state.entries.get(id); if (!e) return;
+  inflight.add(id);
+  try {
+    await state.db.doc("entries/" + id).update({
+      title: e.title, protocols: e.protocols, updatedAt: e.updatedAt,
+      blocks: e.blocks.filter(b => !b.pending).map(({ pending, localUrl, ...b }) => b)
+    });
+    failed.delete(id); clearTimeout(retries.get(id)); retries.delete(id);
+    if (state.openId === id) setSave("Saved");
+  } catch (err) {
+    /* keep the local copy (busy() protects it from being overwritten) and retry until it saves */
+    failed.add(id);
+    if (state.openId === id) setSave("Not saved yet (" + ((err && (err.code || err.message)) || "connection problem") + "). Retrying every few seconds; keep this page open.", true);
+    clearTimeout(retries.get(id));
+    retries.set(id, setTimeout(() => { retries.delete(id); flush(id); }, 5000));
+  } finally {
+    inflight.delete(id);
+    if (dirty.delete(id)) flush(id);
+  }
+}
+const busy = id => timers.has(id) || inflight.has(id) || dirty.has(id) || creating.has(id) || failed.has(id) || (state.entries.get(id)?.blocks || []).some(b => b.pending);
+function setSave(t, err) {
+  const el = $("#saveState"); if (el) { el.textContent = err ? "Not saved" : t; el.classList.toggle("err", !!err); }
+  const ban = $("#saveBanner"); if (ban) { ban.hidden = !err; ban.textContent = err ? t : ""; }
+}
+/* problems are shown inside the page header, where the app's own bars can't cover them */
+function showProblem(msg) {
+  const ban = $("#saveBanner");
+  if (ban) { ban.hidden = false; ban.textContent = msg; clearTimeout(showProblem.t); showProblem.t = setTimeout(() => { if (!failed.has(state.openId)) ban.hidden = true; }, 12000); }
+  else toast(msg, 8000);
+}
+window.addEventListener("error", ev => showProblem("Something went wrong: " + (ev.message || "unknown error") + ". Please tell Claude this message."));
+window.addEventListener("unhandledrejection", ev => { const r = ev.reason; showProblem("Something went wrong: " + ((r && (r.message || r.code)) || String(r)) + ". Please tell Claude this message."); });
+function normalize(raw) {
+  /* stored data arrives frozen (read-only); work on an editable copy */
+  const d = JSON.parse(JSON.stringify(raw || {}));
+  return { title: d.title || "", createdAt: d.createdAt || new Date().toISOString(), updatedAt: d.updatedAt || d.createdAt || "",
+    protocols: Array.isArray(d.protocols) ? d.protocols : [], blocks: Array.isArray(d.blocks) ? d.blocks : [], lastTransfer: d.lastTransfer || null };
+}
+
+/* ---------- boot ---------- */
+async function boot() {
+  wireStatic();
+  if (!window.claude || typeof window.claude.use !== "function") return noStore();
+  const [db, assets, sample, dictation] = await Promise.all(["db", "assets", "sample", "dictation"].map(n => window.claude.use(n).catch(() => null)));
+  state.assets = assets; state.sample = sample; state.dictation = dictation || null;
+  if (dictation) wireNativeDictation(dictation);
+  app.classList.toggle("no-sample", !sample);
+  if (!db) return noStore();
+  state.db = db;
+  const slow = setTimeout(() => { if (!state.loaded) $("#list").innerHTML = '<p class="note">Entries are taking longer than usual to load. Check the connection; they will appear as soon as it returns.</p>'; }, 10000);
+  db.collection("entries").onSnapshot(snap => {
+    clearTimeout(slow); state.loaded = true;
+    const seen = new Set();
+    snap.docs.forEach(d => { seen.add(d.id); if (!busy(d.id)) state.entries.set(d.id, normalize(d.data() || {})); });
+    for (const id of [...state.entries.keys()]) if (!seen.has(id) && !busy(id)) state.entries.delete(id);
+    if (state.openId && !state.entries.has(state.openId)) closeEntry();
+    renderRail(); if (state.openId) refreshEditor();
+  }, err => { clearTimeout(slow); $("#list").innerHTML = `<p class="note">Couldn't load entries (${esc(err.message || err.code)}). They will load when the connection returns.</p>`; });
+  db.collection("protocols").onSnapshot(snap => {
+    state.protocols = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.title || "").localeCompare(b.title || ""));
+    if (state.openId) renderChips();
+  }, () => {});
+  db.doc("config/glossary").onSnapshot(s => { const d = s.exists ? s.data() : {}; state.glossary = { terms: [...(d.terms || [])] }; window.dispatchEvent(new Event("eln-vocab")); }, () => {});
+  db.doc("config/voice").onSnapshot(s => { if (!voiceWrites) state.voice = normalizeVoice(s.exists ? s.data() : {}); }, () => {});
+  db.doc("config/settings").onSnapshot(s => { if (s.exists) Object.assign(state.settings, s.data()); }, () => {});
+}
+function noStore() {
+  $("#list").innerHTML = '<p class="note">ATG ELN keeps entries in your Claude account. Open it from claude.ai or the Claude app while signed in to see and add entries.</p>';
+  $("#blankNew").disabled = true;
+}
+
+/* ---------- rail ---------- */
+function stats(e) {
+  const n = { text: 0, photo: 0, ink: 0 }; e.blocks.forEach(b => n[b.type] = (n[b.type] || 0) + 1);
+  const parts = [`${n.text} line${n.text === 1 ? "" : "s"}`]; if (n.photo) parts.push(`${n.photo} photo${n.photo === 1 ? "" : "s"}`); if (n.ink) parts.push(`${n.ink} sketch${n.ink === 1 ? "" : "es"}`);
+  return parts.join(" · ");
+}
+function xferChip(e) {
+  if (!e.lastTransfer || !e.lastTransfer.at) return e.blocks.length ? '<span class="chip">Not in Benchling</span>' : "";
+  const fresh = e.blocks.filter(b => b.at > e.lastTransfer.at).length;
+  return fresh ? `<span class="chip warn">${fresh} new since transfer</span>` : '<span class="chip ok">In Benchling</span>';
+}
+function renderRail() {
+  const list = $("#list"); const q = state.filter.trim().toLowerCase();
+  const all = [...state.entries.entries()].sort((a, b) => (a[1].createdAt || "").localeCompare(b[1].createdAt || ""));
+  const rows = all.filter(([, e]) => !q || e.title.toLowerCase().includes(q) || e.blocks.some(b => (b.text || "").toLowerCase().includes(q)));
+  $("#countline").textContent = state.loaded ? `${all.length} entr${all.length === 1 ? "y" : "ies"}` : "Bench notebook";
+  let html = rows.map(([id, e]) => `<button class="item${id === state.openId ? " on" : ""}" data-open="${esc(id)}">
+      <span class="t">${esc(e.title || "Untitled entry")}</span>
+      <span class="m"><span class="mono">${esc(ymd(new Date(e.createdAt)))}</span><span>${esc(stats(e))}</span>${xferChip(e)}</span></button>`).join("");
+  if (!rows.length) html = q ? `<p class="note">No entries match “${esc(state.filter)}”.</p>` : '<p class="note">No entries yet. Tap New entry to start your first one.</p>';
+  if (!q) html += `<button class="btn newbtn" id="newEntry">${ICON.plus}New entry</button>`;
+  const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+  const first = !list.dataset.ready;
+  list.innerHTML = html;
+  if (first || atBottom) { list.scrollTop = list.scrollHeight; list.dataset.ready = "1"; }
+}
+
+/* ---------- entry lifecycle ---------- */
+/* New entry: a form first. Nothing is saved until Create entry is tapped, so Back discards it. */
+function newEntry() {
+  if (!state.db) return;
+  stopDictation(true);
+  state.openId = null; state.again = null;
+  const picked = new Set();
+  const groups = {}; state.protocols.forEach(p => (groups[p.category || "Other"] = groups[p.category || "Other"] || []).push(p));
+  const ed = $("#editor");
+  ed.classList.remove("composing");
+  ed.innerHTML = `<header class="ed-head gut"><div class="ed-row">
+      <button class="btn icon ghost only-narrow" id="newBack" aria-label="Back to entries without creating">${'<svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>'}</button>
+      <h2 style="margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.5rem">New entry</h2></div></header>
+    <form class="create gut" id="newForm" autocomplete="off">
+      <label for="newTitle">Title</label>
+      <input class="title" id="newTitle" value="${esc(yymmdd(new Date()) + "_")}" spellcheck="false" enterkeyhint="done">
+      <span class="help">YYMMDD_Project_Line_Description</span>
+      <button class="btn primary" type="submit" id="newCreate">${ICON.plus}Create entry</button>
+      <button class="btn" type="button" id="newCancel">Cancel</button>
+      ${state.protocols.length ? `<h3 style="margin:10px 0 0;font-family:var(--f-display);font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">Link protocols (optional)</h3>` +
+        Object.entries(groups).map(([g, ps]) => `<div class="pgroup"><span class="help" style="margin:0">${esc(g)}</span>${ps.map(p => `<button type="button" class="prow" data-pid="${esc(p.id)}" aria-pressed="false"><span class="ck">${ICON.check}</span><span class="nm">${esc(p.title)}</span></button>`).join("")}</div>`).join("") : ""}
+    </form>`;
+  app.classList.add("editing"); renderRail();
+  const t = $("#newTitle"); t.focus(); t.setSelectionRange(t.value.length, t.value.length);
+  const cancel = () => closeEntry();
+  $("#newBack").onclick = cancel; $("#newCancel").onclick = cancel;
+  $("#newForm").addEventListener("click", ev => {
+    const r = ev.target.closest("[data-pid]"); if (!r) return;
+    const id = r.dataset.pid; picked.has(id) ? picked.delete(id) : picked.add(id);
+    r.classList.toggle("on", picked.has(id)); r.setAttribute("aria-pressed", picked.has(id));
+  });
+  $("#newForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const btn = $("#newCreate"); if (btn.disabled) return; btn.disabled = true;
+    const id = uid(), now = new Date().toISOString();
+    const e = { title: t.value.trim() || yymmdd(new Date()) + "_", createdAt: now, updatedAt: now, protocols: [...picked], blocks: [], lastTransfer: null };
+    state.entries.set(id, e); creating.add(id);
+    try {
+      await state.db.doc("entries/" + id).set(e);
+      creating.delete(id); openEntry(id); setSave("Saved");
+      if (dirty.delete(id)) flush(id);
+    } catch (err) {
+      creating.delete(id); state.entries.delete(id); btn.disabled = false;
+      toast("Couldn't create the entry: " + (err.message || err.code));
+    }
+  });
+}
+function openEntry(id) {
+  if (state.openId !== id) { stopDictation(true); state.again = null; }
+  state.openId = id; state.selected = null;
+  const ed = $("#editor"); ed.innerHTML = ""; ed.classList.remove("composing"); ed.appendChild($("#tpl-editor").content.cloneNode(true));
+  app.classList.add("editing");
+  wireEditor(); refreshEditor(true); renderRail(); keepAwake();
+}
+function closeEntry() {
+  stopDictation(true);
+  state.openId = null; state.again = null; app.classList.remove("editing");
+  const ed = $("#editor"); ed.classList.remove("composing");
+  ed.innerHTML = `<div class="blank gut"><h2>Open an entry, or start today's.</h2><p>Each entry is filled line by line: typed or dictated text, photos and handwritten notes. Ask Claude in any chat to move a day's lines to Benchling.</p><button class="btn primary" id="blankNew">${ICON.plus}New entry</button></div>`;
+  renderRail();
+}
+const cur = () => state.entries.get(state.openId);
+
+/* ---------- editor rendering ---------- */
+function refreshEditor(first) {
+  const e = cur(); if (!e) return;
+  const t = $("#title"); if (t && document.activeElement !== t && t.value !== e.title) t.value = e.title;
+  $("#created").textContent = "Started " + nice(e.createdAt);
+  $("#xfer").innerHTML = xferChip(e) + (e.lastTransfer?.benchlingUrl ? ` <a href="${esc(e.lastTransfer.benchlingUrl)}" target="_blank" rel="noopener">Open in Benchling</a>` : "");
+  if (first) setSave(e.blocks.length ? "Saved" : "");
+  renderChips(); renderLines(first);
+  const cam = !state.assets;
+  ["#tCam", "#tLib", "#tDraw"].forEach(s => { const b = $(s); if (b) b.disabled = cam; });
+}
+function renderChips() {
+  const e = cur(), box = $("#chips"); if (!e || !box) return;
+  box.innerHTML = e.protocols.map(pid => { const p = state.protocols.find(x => x.id === pid); return `<button class="pchip" data-proto="${esc(pid)}">${ICON.book}${esc(p ? p.title : pid)}</button>`; }).join("")
+    + `<button class="pchip add" id="linkProto">${ICON.plus}${e.protocols.length ? "Protocols" : "Link a protocol"}</button>`;
+}
+function dayKeys(e) {
+  const days = []; e.blocks.forEach(b => { const k = ymd(new Date(b.at)); if (!days.includes(k)) days.push(k); }); return days;
+}
+function renderLines(scrollEnd) {
+  const e = cur(), box = $("#lines"); if (!e || !box) return;
+  if (!e.blocks.length) { box.innerHTML = '<p class="note" style="padding-top:24px">No lines yet. Use the buttons to add text, a photo or a handwritten note. Each line is timestamped and grouped by day, like Benchling’s Day sections.</p>'; return; }
+  const empty = box.querySelector(":scope > .note"); if (empty) empty.remove();
+  const days = dayKeys(e);
+  const want = [];
+  let lastDay = null;
+  e.blocks.forEach(b => { const k = ymd(new Date(b.at)); if (k !== lastDay) { want.push({ key: "d:" + k, day: k, n: days.indexOf(k) + 1 }); lastDay = k; } want.push({ key: "b:" + b.id, b }); });
+  const existing = new Map([...box.children].map(n => [n.dataset.key, n]));
+  want.forEach((w, i) => {
+    let node = existing.get(w.key);
+    if (!node) { node = w.b ? makeLine(w.b) : document.createElement("div"); node.dataset.key = w.key; }
+    existing.delete(w.key);
+    if (w.b) updateLine(node, w.b, e); else { node.className = "day"; node.innerHTML = `<b>Day ${w.n}</b><span>${esc(w.day)} · ${esc(WD[new Date(w.day + "T12:00").getDay()])}</span>`; }
+    if (box.children[i] !== node) box.insertBefore(node, box.children[i] || null);
+  });
+  existing.forEach(n => n.remove());
+  renderAgain(box);
+  box.querySelectorAll("textarea.ta").forEach(grow);
+  if (scrollEnd) requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+}
+/* one-tap repeat: after a photo or note is added, offer the same kind again right below it */
+const AGAIN = {
+  photo: ["Take another photo", () => $("#camInput").click()],
+  library: ["Choose more photos", () => $("#libInput").click()],
+  ink: ["Another handwritten note", () => openDraw()]
+};
+function setAgain(kind) { state.again = kind; const box = $("#lines"); if (box && cur() && cur().blocks.length) renderAgain(box); }
+function renderAgain(box) {
+  let row = box.querySelector(":scope > .again");
+  if (!state.again || !AGAIN[state.again]) { if (row) row.remove(); return; }
+  if (!row) { row = document.createElement("div"); row.className = "again"; row.dataset.key = "again"; }
+  row.innerHTML = `<button class="btn" data-again>${ICON.plus}${AGAIN[state.again][0]}</button>`;
+  box.appendChild(row);
+}
+function makeLine(b) {
+  const n = document.createElement("div"); n.className = "line"; n.dataset.bid = b.id;
+  let body = "";
+  if (b.type === "text") body = `<textarea class="ta" rows="1" data-field="text" aria-label="Line text"></textarea>`;
+  else body = `<img class="shot${b.type === "ink" ? " ink" : ""}" alt="${b.type === "ink" ? "Handwritten note" : "Photo"}"><div class="trans" hidden></div><textarea class="ta cap" rows="1" data-field="caption" placeholder="Caption (optional)" aria-label="Caption"></textarea>`;
+  const acts = (b.type === "text" ? `<button class="btn small needs-sample" data-act="fix">${ICON.fix}Fix terms</button>` : "")
+    + (b.type === "ink" ? `<button class="btn small needs-sample" data-act="transcribe">${ICON.read}Read handwriting</button>` : "")
+    + `<button class="btn small danger" data-act="del">${ICON.trash}Delete</button>`;
+  n.innerHTML = `<div class="tm"></div><div class="body">${body}<div class="fixnote" hidden></div><div class="acts">${acts}</div></div>`;
+  return n;
+}
+function updateLine(n, b, e) {
+  n.querySelector(".tm").textContent = hm(b.at);
+  const lt = e.lastTransfer?.at;
+  n.classList.toggle("done", !!lt && b.at <= lt); n.classList.toggle("new-since", !!lt && b.at > lt);
+  n.classList.toggle("sel", state.selected === b.id);
+  const ta = n.querySelector("textarea.ta"); const field = ta?.dataset.field;
+  if (ta && document.activeElement !== ta) { const v = (field === "text" ? b.text : b.caption) || ""; if (ta.value !== v) ta.value = v; }
+  const img = n.querySelector("img.shot");
+  if (img) { const src = b.localUrl || b.url || (b.assetId ? "/_blob/" + b.assetId : ""); if (src && img.getAttribute("src") !== src) img.src = src; img.classList.toggle("pending", !!b.pending); }
+  const tr = n.querySelector(".trans"); if (tr) { tr.hidden = !b.transcript; tr.textContent = b.transcript || ""; }
+}
+function grow(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+
+/* ---------- editor wiring ---------- */
+function wireEditor() {
+  $("#back").onclick = closeEntry;
+  $("#title").addEventListener("input", ev => { const e = cur(); if (!e) return; e.title = ev.target.value; persist(state.openId); renderRail(); });
+  $("#chips").addEventListener("click", ev => {
+    const c = ev.target.closest("[data-proto]"); if (c) return showProtocol(c.dataset.proto);
+    if (ev.target.closest("#linkProto")) pickProtocols();
+  });
+  const lines = $("#lines");
+  lines.addEventListener("pointerdown", ev => { const l = ev.target.closest(".line"); if (l && state.selected !== l.dataset.bid) { state.selected = l.dataset.bid; lines.querySelectorAll(".line").forEach(x => x.classList.toggle("sel", x === l)); } });
+  lines.addEventListener("input", ev => {
+    const ta = ev.target.closest("textarea.ta"); if (!ta) return; const b = blockById(ta.closest(".line").dataset.bid); if (!b) return;
+    b[ta.dataset.field] = ta.value; grow(ta); persist(state.openId, 800);
+  });
+  lines.addEventListener("click", ev => {
+    if (ev.target.closest("[data-again]")) { const a = AGAIN[state.again]; return a && a[1](); }
+    const img = ev.target.closest("img.shot"); if (img) return view(img.src);
+    const btn = ev.target.closest("[data-act]"); if (!btn) return;
+    const line = btn.closest(".line"); const b = blockById(line.dataset.bid); if (!b) return;
+    if (btn.dataset.act === "del") return armDelete(btn, () => deleteBlock(b));
+    if (btn.dataset.act === "fix") return fixLine(b, line);
+    if (btn.dataset.act === "transcribe") return transcribe(b, btn);
+  });
+  $("#tText").onclick = () => openComposer(true);
+  $("#tDict").onclick = () => dict.on ? stopDictation() : startDictation();
+  $("#tCam").onclick = () => $("#camInput").click();
+  $("#tLib").onclick = () => $("#libInput").click();
+  $("#tDraw").onclick = openDraw;
+  $("#askBtn").onclick = openAsk;
+  $("#moreBtn").onclick = openMore;
+  const ta = $("#compTa");
+  ta.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); addFromComposer(); } });
+  ta.addEventListener("input", () => { if (dict.on) dict.resync(); });
+  /* keep the keyboard up while tapping these, so the layout doesn't jump under the finger */
+  ["#compAdd", "#compMic", "#compFixBtn"].forEach(s => $(s).addEventListener("mousedown", ev => ev.preventDefault()));
+  $("#compAdd").onclick = addFromComposer;
+  $("#compCancel").onclick = closeComposer;
+  $("#compMic").onclick = () => dict.on ? stopDictation() : startDictation();
+  $("#compFixBtn").onclick = () => fixFromComposer();
+}
+function closeComposer() {
+  stopDictation(true);
+  const c = $("#comp"); if (c) c.hidden = true;
+  $("#editor").classList.remove("composing");
+}
+const blockById = id => cur()?.blocks.find(b => b.id === id);
+/* stored entries are replaced whenever fresh data arrives, so always edit the live copy by id */
+function setLineText(id, v) {
+  const k = blockById(id); if (!k) return;
+  k.text = v; persist(state.openId, 0);
+  const ta = $(`#lines [data-key="b:${id}"] textarea.ta`); if (ta && document.activeElement !== ta) { ta.value = v; grow(ta); }
+}
+function armDelete(btn, fn) {
+  if (btn.classList.contains("armed")) { fn(); return; }
+  btn.classList.add("armed"); const label = btn.innerHTML; btn.innerHTML = ICON.trash + "Tap again to delete";
+  setTimeout(() => { if (btn.isConnected) { btn.classList.remove("armed"); btn.innerHTML = label; } }, 3500);
+}
+function deleteBlock(b) {
+  const e = cur(); e.blocks = e.blocks.filter(x => x.id !== b.id);
+  if (b.assetId && state.assets) state.assets.delete(b.assetId).catch(() => {});
+  persist(state.openId, 0); renderLines(); renderRail();
+}
+function addBlock(b) {
+  const e = cur(); if (!e) { showProblem("No entry is open, so the line wasn't added."); return; }
+  e.blocks.push(b); state.selected = null;
+  if (!b.pending) persist(state.openId, 0);   /* save first, so a display problem can never lose the line */
+  try {
+    renderLines(true); renderRail();
+    const n = $(`#lines [data-key="b:${b.id}"]`);
+    if (n) { n.classList.remove("flash"); void n.offsetWidth; n.classList.add("flash"); n.scrollIntoView({ block: "nearest" }); }
+  } catch (err) { showProblem("The line was saved but couldn't be shown: " + (err.message || err) + ". Please tell Claude this message."); }
+}
+
+/* ---------- composer ---------- */
+function openComposer(focus) {
+  const c = $("#comp"); c.hidden = false;
+  $("#editor").classList.add("composing");
+  setAgain(null);
+  const box = $("#lines"); if (box) requestAnimationFrame(() => { box.scrollTop = box.scrollHeight; });
+  if (focus) { const ta = $("#compTa"); ta.focus(); }
+}
+function addFromComposer() {
+  const ta = $("#compTa"); const text = ta.value.trim();
+  if (!text) { ta.focus(); return; }
+  addBlock({ id: uid(), type: "text", text, at: new Date().toISOString() });
+  ta.value = ""; $("#compFix").hidden = true; $("#interim").hidden = true;
+  if (dict.on) dict.resync();
+  if (!dict.on) ta.focus();
+}
+
+/* ---------- vocabulary helpers ---------- */
+function vocab() {
+  return "LAB VOCABULARY (the reference list of correct terms):\n" + state.glossary.terms.join("; ") +
+    "\nProtocol titles: " + state.protocols.map(p => p.title).join("; ");
+}
+function protoText(ids, cap) {
+  let out = "";
+  for (const id of ids) { const p = state.protocols.find(x => x.id === id); if (!p) continue; const t = `\n### ${p.title}\n${p.text || ""}\n`; if (out.length + t.length > cap) { out += t.slice(0, Math.max(0, cap - out.length)) + "\n[truncated]"; break; } out += t; }
+  return out;
+}
+function entryText(e, limit = 60) {
+  return e.blocks.slice(-limit).map(b => `[${ymd(new Date(b.at))} ${hm(b.at)}] ` + (b.type === "text" ? b.text : `(${b.type === "ink" ? "handwritten note" : "photo"}${b.caption ? ": " + b.caption : ""}${b.transcript ? "; transcript: " + b.transcript : ""})`)).join("\n");
+}
+function sampleError(err) {
+  const c = err && err.code;
+  if (c === "not_granted") { state.sampleDenied = true; return "Claude help isn't allowed on this page. Turn it on from the page's Permissions menu."; }
+  if (c === "rate_limited") return "Claude is getting too many requests. Wait a minute and try again.";
+  if (c === "prompt_too_large") return "That's too much text to send at once. Unlink a long protocol and try again.";
+  return "Claude couldn't answer: " + ((err && err.message) || "unknown problem");
+}
+/* ---------- learned voice: what dictation heard -> what he said (config/voice) ---------- */
+const VOICE_MAX_PAIRS = 300, VOICE_PROMPT_PAIRS = 60;
+let voiceWrites = 0;   /* while our own writes are in flight, older snapshots must not replace the newer local copy */
+const voiceKey = s => String(s).toLowerCase().replace(/\s+/g, " ").trim();
+const voiceLetters = s => String(s).toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+const voiceRank = (a, b) => b.n - a.n || String(b.at).localeCompare(String(a.at));
+function normalizeVoice(raw) {
+  const d = JSON.parse(JSON.stringify(raw || {}));   /* db data is frozen; work on a copy */
+  return { pairs: (Array.isArray(d.pairs) ? d.pairs : []).filter(p => p && typeof p.heard === "string" && typeof p.said === "string" && p.n > 0) };
+}
+/* a change tells us about his voice only if the letters differ; case, spacing, punctuation and "200 G" → "200 × g" tidying do not */
+const learnable = c => !!c && typeof c.from === "string" && typeof c.to === "string" && !!voiceLetters(c.from) && voiceLetters(c.from) !== voiceLetters(c.to);
+const sameVoicePair = c => p => p.heard === voiceKey(c.from) && p.said === c.to.trim();
+function voiceWith(voice, changes, now) {
+  let pairs = voice.pairs;
+  for (const c of changes.filter(learnable)) {
+    const found = pairs.some(sameVoicePair(c));
+    pairs = found ? pairs.map(p => sameVoicePair(c)(p) ? { ...p, n: p.n + 1, at: now } : p) : [...pairs, { heard: voiceKey(c.from), said: c.to.trim(), n: 1, at: now }];
+  }
+  return { pairs: pairs.length > VOICE_MAX_PAIRS ? [...pairs].sort(voiceRank).slice(0, VOICE_MAX_PAIRS) : pairs };
+}
+function voiceWithout(voice, changes) {
+  let pairs = voice.pairs;
+  for (const c of changes.filter(learnable)) pairs = pairs.map(p => sameVoicePair(c)(p) ? { ...p, n: p.n - 1 } : p).filter(p => p.n > 0);
+  return { pairs };
+}
+async function saveVoice(next) {
+  state.voice = next;
+  if (!state.db) return;
+  voiceWrites++;
+  /* learning is a bonus: a failed write must not interrupt fixing, so it is dropped on purpose (the local copy still helps this session) */
+  try { await state.db.doc("config/voice").set(next); } catch (_) {} finally { voiceWrites--; }
+}
+const learnChanges = changes => { if (changes.some(learnable)) saveVoice(voiceWith(state.voice, changes, new Date().toISOString())); };
+const forgetFix = (() => {
+  const done = new WeakSet();   /* a fix is taken back once, whether by its own Undo or by Undo all */
+  return res => { if (done.has(res) || !res.changes.some(learnable)) return; done.add(res); saveVoice(voiceWithout(state.voice, res.changes)); };
+})();
+function voiceNotes() {
+  const top = [...state.voice.pairs].sort(voiceRank).slice(0, VOICE_PROMPT_PAIRS);
+  if (!top.length) return "";
+  return `How dictation has misheard this speaker before (heard → what he said, times seen). This is evidence about his voice and accent, not a replacement table: use it only when the sentence at hand makes sense with the swap, and keep the vocabulary above as the reference.
+${top.map(p => `${p.heard} → ${p.said} (${p.n})`).join("\n")}`;
+}
+function parseJSON(text) { const a = text.indexOf("{"), b = text.lastIndexOf("}"); if (a < 0 || b < a) throw { message: "Claude's reply wasn't in the expected format." }; return JSON.parse(text.slice(a, b + 1)); }
+async function termPass(text) {
+  const e = cur();
+  const prompt = `You restore lab terms in one line of a stem-cell and molecular-biology lab notebook (iPSC culture, nucleofection, CRISPR knock-ins, PiggyBac, iNeuron differentiation, cloning). The line was usually dictated, and speech-to-text does not know lab words, so it writes ordinary words that only SOUND like them.
+
+The lab vocabulary below is the reference. Do not trust what dictation wrote. Read the line aloud in your head and, for every word or run of words, ask which vocabulary term the speaker most likely SAID, judging by sound and by what makes sense at the bench. Replace the words with that term, spelled exactly as in the vocabulary. Examples of the kind of match to make: "cough NGN2" or "golf engine two" → KOLF-NGN2; "a cute ace" → Accutase; "mature gel" → Matrigel; "cast nine" → Cas9; "piggy back" → PiggyBac. These are examples only; apply the same sound-matching to every vocabulary term, including ones never misheard before. A term may be split across several words ("new cliff fiction" → nucleofection), merged into one, or have letters and digits spelled out. Write plasmid, sample and line IDs the way the vocabulary does, dropping spaces and leading zeros a dictation added ("PAS 0016" → PAS16, "coal f 2.1 J" → KOLF2.1J).
+A listed term stands for its whole word family, so "nucleofector" also covers nucleofection, nucleofected and nucleofecting; an entry likewise covers plurals, and hyphen, space and capitalisation variants, and any words in brackets after a term belong to that entry. Write whichever form fits the sentence.
+Prefer a vocabulary term whenever a word is out of place in a lab sentence and sounds close to one. You may also write a standard, widely used term from stem-cell or molecular-biology work that is not listed, but only where the sound match is unmistakable; never invent a name that is not real. Terms that differ by only a letter or two are different things (trypsin and trypan, PAS16 and PAS18, JF549 and JF646), so match the sounds across the whole word rather than snapping to the nearest spelling.
+Leave ordinary words that make sense as they are, and leave anything with no plausible match unchanged.
+Also tidy units and numbers ("micro liters" → "µl", "200 G" → "200 × g", "37 C" → "37 °C"). Keep the author's wording and order otherwise. Do not add, remove or reinterpret content.
+Return only JSON: {"text": "<corrected line>", "changes": [{"from": "<original words>", "to": "<corrected words>"}]}
+
+${vocab()}
+
+${voiceNotes()}
+
+Entry title: ${e ? e.title : ""}
+Earlier lines in this entry, for context:
+${e ? entryText(e, 12) : ""}
+${e && e.protocols.length ? "\nProtocols linked to this entry:" + protoText(e.protocols, 14000) : ""}
+
+Line to correct:
+<<<${text}>>>`;
+  const r = await state.sample(prompt, { ...modelOpts(state.settings.fixModel), cache: false });
+  const j = parseJSON(r.text);
+  return { text: typeof j.text === "string" ? j.text : text, changes: Array.isArray(j.changes) ? j.changes.filter(c => c && c.from !== c.to) : [], by: answeredBy(r) };
+}
+/* pass 2: read the corrected line against the whole entry; fix what context makes clear, ask about the rest */
+async function contextPass(text) {
+  const e = cur();
+  const others = [...state.entries.entries()].filter(([id]) => id !== state.openId)
+    .sort((a, b) => (b[1].updatedAt || "").localeCompare(a[1].updatedAt || "")).slice(0, 15).map(([, x]) => x.title).join("; ");
+  const prompt = `This is a second, context check on one line of a stem-cell and molecular-biology lab notebook. Lab terms in the line were already corrected against the vocabulary. Now read it the way the scientist who wrote it would, together with the rest of the entry, and find words that still don't make sense there. They are almost always dictation errors that sound like the intended words.
+
+- Fix a word only when the context makes the intended word clear: a culture step that only makes sense as one specific operation, or a name, sample or term that the entry, other entry titles, the protocols or the vocabulary spell correctly elsewhere. Match by sound.
+- When words still look wrong but the context doesn't settle what was meant (often a person, a collaborator, a company, an assay or an instrument that isn't in the vocabulary), leave them unchanged and list them under "unsure" with up to three likely readings, best first. Readings may be names or terms you know from the field.
+- Don't rephrase, don't fix grammar, punctuation or style, and don't touch anything that already makes sense. Most lines need no change and nothing in "unsure".
+Return only JSON: {"text": "<line>", "changes": [{"from": "<original words>", "to": "<corrected words>"}], "unsure": [{"words": "<exact words as they appear in the line>", "guesses": ["...", "..."]}]}
+
+${vocab()}
+
+Entry title: ${e ? e.title : ""}
+Titles of other entries: ${others || "none"}
+${e && e.protocols.length ? "Protocols linked to this entry: " + e.protocols.map(id => (state.protocols.find(p => p.id === id) || {}).title).filter(Boolean).join("; ") : ""}
+The entry so far:
+${e ? entryText(e, 80) : ""}
+
+Line to check:
+<<<${text}>>>`;
+  const r = await state.sample(prompt, { ...modelOpts(state.settings.fixModel), cache: false });
+  const j = parseJSON(r.text);
+  const out = typeof j.text === "string" && j.text.trim() ? j.text : text;
+  return {
+    text: out, by: answeredBy(r),
+    changes: Array.isArray(j.changes) ? j.changes.filter(c => c && c.from && c.from !== c.to) : [],
+    unsure: (Array.isArray(j.unsure) ? j.unsure : []).filter(u => u && u.words && out.toLowerCase().includes(String(u.words).toLowerCase()))
+      .map(u => ({ words: String(u.words), guesses: (Array.isArray(u.guesses) ? u.guesses : []).map(String).filter(g => g && g.toLowerCase() !== String(u.words).toLowerCase()).slice(0, 3) })).slice(0, 4)
+  };
+}
+async function fixText(text) {
+  const a = await termPass(text);
+  try {
+    const b = await contextPass(a.text);
+    return { text: b.text, changes: a.changes.concat(b.changes), unsure: b.unsure, by: a.by };
+  } catch (err) {
+    if (err && err.code === "not_granted") throw err;
+    return { ...a, unsure: [], note: "The context check didn't run this time." };
+  }
+}
+const swapWords = (t, from, to) => { const i = t.toLowerCase().indexOf(from.toLowerCase()); return i < 0 ? t : t.slice(0, i) + to + t.slice(i + from.length); };
+async function addVocabTerm(t) {
+  t = t.trim(); if (!t || !state.db) return false;
+  if (state.glossary.terms.some(x => x.toLowerCase() === t.toLowerCase())) { toast(`“${t}” is already in the vocabulary.`); return true; }
+  const terms = [t, ...state.glossary.terms];
+  try { await state.db.doc("config/glossary").set({ terms }); state.glossary = { terms }; window.dispatchEvent(new Event("eln-vocab")); toast(`Added “${t}” to the vocabulary.`); return true; }
+  catch (err) { toast("Couldn't save the vocabulary: " + (err.message || err.code)); return false; }
+}
+/* el: the note; undo(): restore the original; apply(fn): change the current text with fn(text) */
+function showFixNote(el, res, undo, apply) {
+  el.hidden = false; learnChanges(res.changes);
+  const list = res.changes.length ? res.changes.map(c => `${esc(c.from)} → <b>${esc(c.to)}</b>`).join(", ") : (res.unsure.length ? "No sure changes" : "No changes needed");
+  el.innerHTML = `${ICON.check}<span>${list}</span><span class="mono">${esc(res.by)}</span>` + (res.changes.length ? `<button class="btn small" data-undo>${ICON.undo}Undo</button>` : "")
+    + (res.note ? `<span class="help">${esc(res.note)}</span>` : "")
+    + res.unsure.map((u, i) => `<div class="unsure" data-u="${i}"><span class="q">Not sure about <b>“${esc(u.words)}”</b>. Did you mean</span>
+        ${u.guesses.map(g => `<button class="btn small" data-g="${esc(g)}">${esc(g)}</button>`).join("")}
+        <form class="other"><input aria-label="What you meant by ${esc(u.words)}" placeholder="Something else" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"><button class="btn small" type="submit">Use</button></form>
+        <button class="btn small ghost" data-keep>It's right</button></div>`).join("");
+  el.querySelector("[data-undo]")?.addEventListener("click", () => { undo(); forgetFix(res); el.hidden = true; });
+  el.querySelectorAll(".unsure").forEach(row => {
+    const u = res.unsure[+row.dataset.u];
+    const done = (to, typed) => {
+      apply(t => swapWords(t, u.words, to)); learnChanges([{ from: u.words, to }]);
+      row.innerHTML = `<span class="q">Changed “${esc(u.words)}” to <b>${esc(to)}</b>.</span><button class="btn small" data-addv>${ICON.plus}Add “${esc(to)}” to vocabulary</button>`;
+      const add = row.querySelector("[data-addv]"); add.onclick = async () => { if (await addVocabTerm(to)) add.remove(); };
+      if (typed) add.click();   /* a word you typed yourself is new to the app: keep it */
+    };
+    row.querySelectorAll("[data-g]").forEach(b => b.onclick = () => done(b.dataset.g, false));
+    row.querySelector("form.other").addEventListener("submit", ev => { ev.preventDefault(); const v = ev.target.querySelector("input").value.trim(); if (v) done(v, true); });
+    row.querySelector("[data-keep]").onclick = () => row.remove();
+  });
+}
+async function fixComposer(auto) {
+  if (!state.sample) return;
+  const ta = $("#compTa"); const before = ta.value.trim(); if (!before) { if (!auto) ta.focus(); return; }
+  const btn = $("#compFixBtn"); const lbl = btn.querySelector(".lbl"); btn.disabled = true; lbl.textContent = "Fixing…";
+  try {
+    const res = await fixText(before);
+    if (ta.value.trim() === before) ta.value = res.text;
+    showFixNote($("#compFix"), res, () => { ta.value = before; }, f => { ta.value = f(ta.value); });
+  } catch (err) { toast(sampleError(err)); }
+  finally { if (btn.isConnected) { btn.disabled = false; lbl.textContent = "Fix terms"; } }
+}
+async function fixLine(b, line) {
+  if (!state.sample || !b || !b.text) return;
+  line = line || $(`#lines [data-key="b:${b.id}"]`); if (!line) return;
+  state.selected = b.id;
+  $("#lines").querySelectorAll(".line").forEach(x => x.classList.toggle("sel", x === line));
+  line.scrollIntoView({ block: "nearest" });
+  const btn = line.querySelector('[data-act="fix"]'); if (btn) btn.disabled = true;
+  const id = b.id, before = b.text;
+  try {
+    const res = await fixText(before);
+    if (blockById(id)?.text === before && res.text !== before) setLineText(id, res.text);
+    showFixNote(line.querySelector(".fixnote"), res, () => setLineText(id, before), f => { const k = blockById(id); if (k) setLineText(id, f(k.text)); });
+  } catch (err) { toast(sampleError(err)); }
+  finally { if (btn && btn.isConnected) btn.disabled = false; }
+}
+/* the composer's Fix button: the draft if there is one, otherwise the entry's last line */
+function fixFromComposer() {
+  const ta = $("#compTa");
+  if (ta.value.trim()) return fixComposer();
+  const e = cur();
+  const last = e && [...e.blocks].reverse().find(b => b.type === "text" && (b.text || "").trim());
+  if (!last) { toast("Type a line first, or tap a line in the entry to fix it."); ta.focus(); return; }
+  return fixLine(last);
+}
+/* every text line in the entry, one after another */
+async function fixAllLines(btn) {
+  const e = cur(); if (!e || !state.sample) return;
+  const todo = e.blocks.filter(b => b.type === "text" && (b.text || "").trim());
+  if (!todo.length) { toast("This entry has no text lines yet."); return; }
+  const before = new Map(todo.map(b => [b.id, b.text])), ids = todo.map(b => b.id);
+  btn.disabled = true; let changed = 0, failed = 0, asked = 0; const notes = [];
+  for (let i = 0; i < todo.length; i++) {
+    btn.textContent = `Fixing line ${i + 1} of ${todo.length}…`;
+    try {
+      const id = ids[i], orig = before.get(id);
+      const r = await fixText(orig); if (r.text && r.text !== orig && blockById(id)?.text === orig) { setLineText(id, r.text); changed++; }
+      if (r.unsure.length) asked++;
+      notes.push([id, r, orig]);
+    }
+    catch (err) { failed++; if (err && err.code === "not_granted") break; }
+  }
+  persist(state.openId, 0); renderLines();
+  for (const [id, r, orig] of notes) {
+    if (!r.changes.length && !r.unsure.length) continue;
+    const node = $(`#lines [data-key="b:${id}"]`); if (!node) continue;
+    showFixNote(node.querySelector(".fixnote"), r, () => setLineText(id, orig), f => { const k = blockById(id); if (k) setLineText(id, f(k.text)); });
+  }
+  btn.disabled = false; btn.innerHTML = ICON.fix + "Fix terms in every line";
+  const undo = $("#fixUndo");
+  if (undo && changed) { undo.hidden = false; undo.onclick = () => { ids.forEach(id => setLineText(id, before.get(id))); notes.forEach(([, r]) => forgetFix(r)); renderLines(); undo.hidden = true; toast("Put every line back."); }; }
+  toast((changed ? `Fixed ${changed} of ${todo.length} lines.` : failed ? "Couldn't check the lines. Try again in a moment." : "Nothing needed fixing.") + (asked ? ` ${asked} line${asked === 1 ? " has a question" : "s have questions"} for you.` : "") + (failed && changed ? ` ${failed} couldn't be checked.` : ""));
+}
+
+/* ---------- dictation (device speech recognition, stays on until tapped off) ---------- */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const dict = {
+  on: false, rec: null, base: "", finals: [], offset: 0, lastLen: 0, blocked: false, netFails: 0, added: false, native: false, nativeOff: false,
+  resync() { this.base = $("#compTa")?.value || ""; this.finals = []; this.offset = this.lastLen; },
+  newSession() { this.base = $("#compTa")?.value || ""; this.finals = []; this.offset = 0; this.lastLen = 0; }
+};
+function dictUI() {
+  const t = $("#tDict"); if (!t) return;
+  t.classList.toggle("rec", dict.on); $("#tDictLabel").textContent = dict.on ? "Stop" : "Dictate";
+  const m = $("#compMic"); m.classList.toggle("rec", dict.on); m.setAttribute("aria-label", dict.on ? "Stop dictation" : "Dictate"); $("#compMicLabel").textContent = dict.on ? "Stop" : "Dictate";
+  const s = $("#dstatus"); s.hidden = !dict.on; s.classList.toggle("rec", dict.on);
+  $("#dstatusText").textContent = "Listening. Dictation stays on until you tap Stop.";
+  if (!dict.on) $("#interim").hidden = true;
+}
+function keyboardHint(reason) {
+  const h = $("#dhint"); if (!h) return;
+  h.hidden = false;
+  h.textContent = (reason === "unsupported" ? "This browser doesn't offer speech recognition to web pages." : "The microphone isn't available to this page here.")
+    + " Tap the microphone key on your keyboard to dictate instead, then use Fix terms to clean up lab words. Keyboard dictation can stop on its own; tap the key again to continue.";
+  $("#compTa").focus();
+}
+function makeRec() {
+  const r = new SR();
+  r.continuous = true; r.interimResults = true; r.lang = state.settings.lang || "en-US"; r.maxAlternatives = 1;
+  try { if ("SpeechRecognitionPhrase" in window) r.phrases = state.glossary.terms.filter(t => t.length < 40).slice(0, 120).map(t => new window.SpeechRecognitionPhrase(t.replace(/\s*\(.*\)$/, ""), 4)); } catch (_) {}
+  r.onresult = ev => {
+    dict.lastLen = ev.results.length;
+    let interim = "";
+    for (let i = Math.max(ev.resultIndex, dict.offset); i < ev.results.length; i++) {
+      const res = ev.results[i], tx = res[0].transcript.trim();
+      if (res.isFinal) {
+        const k = i - dict.offset, prev = dict.finals[k - 1];
+        if (prev && tx.toLowerCase().startsWith(prev.toLowerCase())) dict.finals[k - 1] = "";  /* Android repeats earlier text */
+        dict.finals[k] = tx;
+      } else interim += " " + tx;
+    }
+    const spoken = dict.finals.filter(Boolean).join(" ");
+    const ta = $("#compTa"); if (ta) { ta.value = (dict.base && spoken ? dict.base.replace(/\s*$/, " ") : dict.base) + spoken; dict.added = dict.added || !!spoken; }
+    const im = $("#interim"); if (im) { im.hidden = !interim.trim(); im.textContent = interim.trim(); }
+    dict.netFails = 0;
+  };
+  r.onerror = ev => {
+    if (["not-allowed", "service-not-allowed", "audio-capture"].includes(ev.error)) { dict.blocked = true; dict.on = false; dictUI(); keyboardHint("blocked"); }
+    else if (ev.error === "network" && ++dict.netFails > 3) { dict.on = false; dictUI(); toast("Dictation lost its connection. Tap Dictate to try again."); }
+  };
+  r.onend = () => {
+    if (dict.on) {  /* the device ended the session: start a new one */
+      dict.newSession();
+      setTimeout(() => {
+        if (!dict.on) return;
+        try { dict.rec.start(); } catch (_) { try { dict.rec = makeRec(); dict.rec.start(); } catch (e2) { dict.on = false; dictUI(); toast("Dictation stopped and couldn't restart. Tap Dictate again."); } }
+      }, 250);
+    } else finishDictation();
+  };
+  return r;
+}
+/* Claude's own dictation (Chrome, Claude desktop). null elsewhere, e.g. Safari on iPad, where the code below the next block runs as before. */
+const NATIVE_OFF = ["not_granted", "unavailable"];            /* don't use it again in this page load */
+const NATIVE_QUIET = ["stopped", "viewer_stopped", "hidden", "time_limit", "dismissed"];
+const NATIVE_FINISHED = ["stopped", "viewer_stopped", "hidden", "time_limit"];
+function wireNativeDictation(d) {
+  d.onPartial(({ text }) => { const im = $("#interim"); if (dict.native && im) { im.hidden = !(text || "").trim(); im.textContent = (text || "").trim(); } });
+  d.onFinal(({ text }) => {
+    const ta = $("#compTa"); if (!dict.native || !ta || !text) return;
+    ta.value = ta.value ? ta.value + text : text.replace(/^\s+/, ""); dict.added = true;
+  });
+  d.onState(({ state: s, reason }) => { if (s === "idle") nativeEnded(reason || "upstream_error"); });
+}
+function nativeEnded(code) {
+  if (NATIVE_OFF.includes(code)) dict.nativeOff = true;
+  if (!dict.on) return;
+  dict.on = false; dict.native = false; dictUI();
+  if (NATIVE_OFF.includes(code)) return startWebSpeech();
+  if (NATIVE_FINISHED.includes(code)) return finishDictation();
+  if (code !== "dismissed") toast("Dictation stopped (" + String(code).replace(/_/g, " ") + "). Tap Dictate to try again.");
+}
+function startNativeDictation(d) {
+  $("#dhint").hidden = true; $("#compFix").hidden = true;
+  dict.on = true; dict.native = true; dict.added = false;
+  const language = (state.settings.lang || "en-US").slice(0, 2);
+  d.start({ language }).catch(err => nativeEnded((err && err.code) || "upstream_error"));   /* called inside the tap, nothing awaited before it */
+  dictUI(); keepAwake();
+}
+async function stopNativeDictation() {
+  try { await state.dictation.stop(); } catch (err) { if (!err || !NATIVE_QUIET.includes(err.code)) toast("Dictation didn't stop cleanly: " + ((err && err.message) || "unknown problem")); }
+  dict.native = false; finishDictation();
+}
+function startDictation() {
+  openComposer(false);
+  if (state.dictation && !dict.nativeOff) return startNativeDictation(state.dictation);
+  startWebSpeech();
+}
+function startWebSpeech() {
+  if (!SR) { keyboardHint("unsupported"); return; }
+  if (dict.blocked) { keyboardHint("blocked"); return; }
+  $("#dhint").hidden = true; $("#compFix").hidden = true;
+  dict.on = true; dict.added = false; dict.netFails = 0; dict.lastLen = 0; dict.offset = 0; dict.finals = []; dict.base = $("#compTa").value;
+  dict.rec = makeRec();
+  try { dict.rec.start(); } catch (e) { dict.on = false; keyboardHint("blocked"); }
+  dictUI(); keepAwake();
+}
+function stopDictation(silent) {
+  if (!dict.on) return;
+  dict.on = false; dict.silent = !!silent; dictUI();
+  if (dict.native) return stopNativeDictation();
+  try { dict.rec && dict.rec.stop(); } catch (_) {}
+}
+function finishDictation() {
+  const silent = dict.silent; dict.silent = false;
+  if (!silent && dict.added && state.settings.autoFix && state.sample && !state.sampleDenied && $("#compTa")) fixComposer(true);
+}
+
+/* ---------- photos ---------- */
+async function shrink(file, max = 2400) {
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const s = Math.min(1, max / Math.max(bmp.width, bmp.height));
+    if (s === 1 && file.size < 4e6 && /jpe?g|png|webp/i.test(file.type)) { bmp.close && bmp.close(); return file; }
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height); bmp.close && bmp.close();
+    return await new Promise(r => c.toBlob(b => r(b || file), "image/jpeg", 0.86));
+  } catch (_) { return file; }
+}
+async function uploadBlock(type, blob, extra = {}, againKind = null) {
+  if (!state.assets) { toast("Photos and handwriting need edit access to this page."); return; }
+  const entryId = state.openId;
+  const b = { id: uid(), type, at: new Date().toISOString(), caption: "", pending: true, localUrl: URL.createObjectURL(blob), ...extra };
+  if (againKind) state.again = againKind;
+  addBlock(b);
+  try {
+    const r = await state.assets.upload(blob);
+    b.assetId = r.id; b.url = r.url; delete b.pending;
+    const e = state.entries.get(entryId); if (e) { if (state.openId === entryId) renderLines(); persist(entryId, 0); }
+  } catch (err) {
+    const e = state.entries.get(entryId); if (e) e.blocks = e.blocks.filter(x => x.id !== b.id);
+    if (state.openId === entryId) renderLines();
+    showProblem(err && err.code === "too_large" ? "That image is too large to upload." : `The ${type === "ink" ? "handwritten note" : "photo"} didn't upload (${(err && (err.code || err.message)) || "connection problem"}). Please tell Claude this message.`);
+  }
+}
+async function onFiles(files, kind) { closeComposer(); for (const f of files) await uploadBlock("photo", await shrink(f), {}, kind); }
+
+/* ---------- handwriting canvas ---------- */
+function openDraw() {
+  if (!state.assets) { toast("Handwriting needs edit access to this page."); return; }
+  stopDictation(true);
+  const wrap = document.createElement("div"); wrap.className = "draw";
+  const COLORS = [["Ink", "#1B1D24"], ["Blue", "#1F4FD1"], ["Red", "#C62D21"]];
+  const SIZES = [["Fine", 2.2, 6], ["Medium", 3.6, 9], ["Bold", 6, 13]];
+  wrap.innerHTML = `<div class="draw-bar gut">
+      ${COLORS.map(([n, c], i) => `<button class="swatch${i === 0 ? " on" : ""}" data-color="${c}" aria-label="${n} pen"><i style="background:${c}"></i></button>`).join("")}
+      ${SIZES.map(([n, w, px], i) => `<button class="swatch${i === 0 ? " on" : ""}" data-size="${w}" aria-label="${n} line"><b style="height:${px}px"></b></button>`).join("")}
+      <button class="swatch" data-d="eraser" aria-label="Eraser">${ICON.eraser}</button>
+      <button class="btn icon" data-d="undo" aria-label="Undo stroke">${ICON.undo}</button>
+      <button class="btn" data-d="clear">Clear</button>
+      <span class="sp"></span><span class="added" id="addedCount" hidden></span>
+    </div><div class="paper"><canvas aria-label="Handwriting area"></canvas></div>
+    <div class="draw-actions gut">
+      <button class="btn" data-d="cancel">Close</button>
+      <button class="btn" data-d="done">${ICON.check}Add &amp; close</button>
+      <button class="btn primary" data-d="next">${ICON.plus}Add + new page</button>
+    </div>`;
+  document.body.appendChild(wrap);
+  const cv = wrap.querySelector("canvas"), paper = wrap.querySelector(".paper"), ctx = cv.getContext("2d");
+  let dpr = 1, strokes = [], curS = null, curId = null, penSeen = false, color = COLORS[0][1], size = SIZES[0][1], erase = false;
+  function fit() { dpr = window.devicePixelRatio || 1; const r = paper.getBoundingClientRect(); cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); redraw(); }
+  function seg(s, a, b) {
+    ctx.globalCompositeOperation = s.erase ? "destination-out" : "source-over";
+    ctx.strokeStyle = s.color; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.lineWidth = (s.erase ? s.size * 5 : s.size * (s.pen ? 0.45 + b[2] * 1.1 : 1)) * dpr;
+    ctx.beginPath(); ctx.moveTo(a[0] * dpr, a[1] * dpr); ctx.lineTo(b[0] * dpr, b[1] * dpr); ctx.stroke();
+  }
+  function drawStroke(s) { const p = s.pts; if (p.length === 1) seg(s, p[0], [p[0][0] + 0.01, p[0][1], p[0][2]]); for (let i = 1; i < p.length; i++) seg(s, p[i - 1], p[i]); }
+  function redraw() { ctx.clearRect(0, 0, cv.width, cv.height); strokes.forEach(drawStroke); ctx.globalCompositeOperation = "source-over"; }
+  const pt = ev => { const r = cv.getBoundingClientRect(); return [ev.clientX - r.left, ev.clientY - r.top, ev.pressure || 0.5]; };
+  cv.addEventListener("pointerdown", ev => {
+    if (ev.pointerType === "pen") penSeen = true;
+    if (penSeen && ev.pointerType === "touch") return;   /* palm rejection once a stylus is in use */
+    if (curS) return;
+    cv.setPointerCapture(ev.pointerId); curId = ev.pointerId;
+    curS = { color, size, erase, pen: ev.pointerType === "pen", pts: [pt(ev)] }; drawStroke(curS); ev.preventDefault();
+  });
+  cv.addEventListener("pointermove", ev => {
+    if (!curS || ev.pointerId !== curId) return;
+    const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+    for (const c of (evs.length ? evs : [ev])) { const p = pt(c); const last = curS.pts[curS.pts.length - 1]; curS.pts.push(p); seg(curS, last, p); }
+    ev.preventDefault();
+  });
+  const end = ev => { if (!curS || ev.pointerId !== curId) return; strokes.push(curS); curS = null; curId = null; ctx.globalCompositeOperation = "source-over"; };
+  cv.addEventListener("pointerup", end); cv.addEventListener("pointercancel", end);
+  cv.addEventListener("touchmove", ev => ev.preventDefault(), { passive: false });
+  const ro = new ResizeObserver(fit); ro.observe(paper);
+  let added = 0;
+  const close = () => { ro.disconnect(); wrap.remove(); if (added) setAgain("ink"); };
+  wrap.addEventListener("click", ev => {
+    if (!ev.target.closest(".draw-bar, .draw-actions")) return;
+    const b = ev.target.closest("button"); if (!b) return;
+    if (b.dataset.color) { color = b.dataset.color; erase = false; wrap.querySelectorAll("[data-color],[data-d=eraser]").forEach(x => x.classList.toggle("on", x === b)); return; }
+    if (b.dataset.size) { size = +b.dataset.size; wrap.querySelectorAll("[data-size]").forEach(x => x.classList.toggle("on", x === b)); return; }
+    const d = b.dataset.d;
+    if (d === "eraser") { erase = true; wrap.querySelectorAll("[data-color],[data-d=eraser]").forEach(x => x.classList.toggle("on", x === b)); }
+    if (d === "undo") { strokes.pop(); redraw(); }
+    if (d === "clear") { strokes = []; redraw(); }
+    if (d === "cancel") { if (strokes.some(s => !s.erase)) armDelete(b, close); else close(); }
+    if (d === "done") { if (strokes.some(s => !s.erase)) saveInk(true); else close(); }
+    if (d === "next") saveInk(false);
+  });
+  async function saveInk(thenClose) {
+    const inkStrokes = strokes.filter(s => !s.erase); if (!inkStrokes.length) { toast("Write something first."); return; }
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    inkStrokes.forEach(s => s.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }));
+    const m = 24 * dpr; const sx = Math.max(0, x0 * dpr - m), sy = Math.max(0, y0 * dpr - m);
+    const w = Math.min(cv.width - sx, (x1 - x0) * dpr + 2 * m), h = Math.min(cv.height - sy, (y1 - y0) * dpr + 2 * m);
+    const out = document.createElement("canvas"); out.width = Math.max(1, Math.round(w)); out.height = Math.max(1, Math.round(h));
+    const o = out.getContext("2d"); o.fillStyle = "#ffffff"; o.fillRect(0, 0, out.width, out.height); o.drawImage(cv, sx, sy, w, h, 0, 0, out.width, out.height);
+    const blob = await new Promise(r => out.toBlob(r, "image/png"));
+    if (!blob) { toast("Couldn't capture the note. Try again."); return; }
+    added++;
+    uploadBlock("ink", blob, { transcript: "" });
+    if (thenClose) { close(); return; }
+    strokes = []; redraw();   /* fresh page for the next note */
+    const c = wrap.querySelector("#addedCount"); c.hidden = false; c.textContent = `${added} added`;
+  }
+}
+async function transcribe(b, btn) {
+  if (!state.sample) return;
+  btn.disabled = true; const label = btn.innerHTML; btn.innerHTML = ICON.read + "Reading…";
+  try {
+    const lim = await state.sample.limits().catch(() => ({}));
+    if (!lim.images) throw { message: "image reading isn't available on this page" };
+    const resp = await fetch(b.url || "/_blob/" + b.assetId); const blob = await resp.blob();
+    const r = await state.sample(`Transcribe this handwritten lab notebook note exactly, keeping line breaks, numbers and units. Use these correct spellings when a word matches: ${state.glossary.terms.join("; ")}. Describe any sketch or diagram in square brackets. Return only the transcription.`, { ...modelOpts(state.settings.fixModel), images: [blob], cache: false });
+    const live = blockById(b.id); if (live) { live.transcript = r.text.trim(); persist(state.openId, 0); renderLines(); }
+    toast("Handwriting read by " + answeredBy(r) + ".");
+  } catch (err) { toast(sampleError(err)); }
+  finally { if (btn.isConnected) { btn.disabled = false; btn.innerHTML = label; } }
+}
+
+/* ---------- sheets ---------- */
+function sheet(title, bodyHTML, opts = {}) {
+  const s = document.createElement("div"); s.className = "sheet"; s.setAttribute("role", "dialog"); s.setAttribute("aria-modal", "true");
+  s.innerHTML = `<div class="panel"><div class="p-head gut"><h2>${esc(title)}</h2>${opts.headBtn || ""}<button class="btn icon" data-close aria-label="Close">${ICON.x}</button></div><div class="p-body gut">${bodyHTML}</div></div>`;
+  document.body.appendChild(s);
+  const close = () => { s.remove(); opts.onClose && opts.onClose(); };
+  s.addEventListener("click", ev => { if (ev.target === s || ev.target.closest("[data-close]")) close(); });
+  s.addEventListener("keydown", ev => { if (ev.key === "Escape") close(); });
+  setTimeout(() => s.querySelector("[data-close]").focus(), 30);
+  return { el: s, body: s.querySelector(".p-body"), close };
+}
+function mdLite(src) {
+  const lines = src.split("\n"); let html = "", list = null, tbl = null;
+  const inl = t => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+  const flushList = () => { if (list) { html += `<${list.t}>${list.items.map(i => `<li>${i}</li>`).join("")}</${list.t}>`; list = null; } };
+  const flushTbl = () => { if (tbl) { html += `<div class="tbl"><table>${tbl.map(r => `<tr>${r.map(c => `<td>${inl(c).replace(/&lt;br&gt;/g, "<br>")}</td>`).join("")}</tr>`).join("")}</table></div>`; tbl = null; } };
+  for (const raw of lines) {
+    const l = raw.trimEnd(), t = l.trim();
+    if (/^\|/.test(t)) { flushList(); if (/^\|\s*-{3}/.test(t)) continue; (tbl = tbl || []).push(t.replace(/^\||\|$/g, "").split("|").map(c => c.trim())); continue; }
+    flushTbl();
+    if (!t) { flushList(); continue; }
+    let m;
+    if ((m = t.match(/^#{1,4}\s+(.*)/))) { flushList(); html += `<h4>${inl(m[1])}</h4>`; continue; }
+    if ((m = t.match(/^(?:[-●•]|\d+\.)\s+(.*)/))) { const ty = /^\d/.test(t) ? "ol" : "ul"; if (!list || list.t !== ty) { flushList(); list = { t: ty, items: [] }; } list.items.push(inl(m[1])); continue; }
+    if (list && /^\s{2,}/.test(l)) { list.items[list.items.length - 1] += "<br>" + inl(t); continue; }
+    flushList(); html += `<p>${inl(t)}</p>`;
+  }
+  flushList(); flushTbl(); return html;
+}
+function showProtocol(pid) {
+  const p = state.protocols.find(x => x.id === pid); const e = cur();
+  if (!p) { toast("That protocol is no longer in the library."); return; }
+  const linked = e && e.protocols.includes(pid);
+  const body = `<dl class="meta-grid"><dt>Folder</dt><dd>${esc(p.category || "")}</dd><dt>Benchling</dt><dd class="mono">${esc(p.benchlingId || "—")}</dd></dl>
+    ${e ? `<button class="btn${linked ? "" : " primary"}" id="pLink">${linked ? "Unlink from this entry" : "Link to this entry"}</button>` : ""}
+    <div class="doc">${/kampmann/.test(pid) ? `<pre class="raw">${esc(p.text)}</pre>` : mdLite(p.text || "")}</div>`;
+  const s = sheet(p.title, body);
+  const b = s.body.querySelector("#pLink");
+  if (b) b.onclick = () => { toggleProto(pid); s.close(); };
+}
+function toggleProto(pid) {
+  const e = cur(); if (!e) return;
+  e.protocols = e.protocols.includes(pid) ? e.protocols.filter(x => x !== pid) : [...e.protocols, pid];
+  persist(state.openId, 0); renderChips();
+}
+function pickProtocols() {
+  const e = cur(); if (!e) return;
+  if (!state.protocols.length) { toast("The protocol library is empty."); return; }
+  const groups = {}; state.protocols.forEach(p => (groups[p.category || "Other"] = groups[p.category || "Other"] || []).push(p));
+  const body = `<p class="note" style="padding:0">Linked protocols give Claude the right vocabulary and amounts when fixing terms or answering questions about this entry.</p>` +
+    Object.entries(groups).map(([g, ps]) => `<h3>${esc(g)}</h3><div class="pgroup">${ps.map(p => `<button class="prow${e.protocols.includes(p.id) ? " on" : ""}" data-pid="${esc(p.id)}" aria-pressed="${e.protocols.includes(p.id)}"><span class="ck">${ICON.check}</span><span class="nm">${esc(p.title)}</span></button>`).join("")}</div>`).join("");
+  const s = sheet("Link protocols", body, { headBtn: '<button class="btn primary" data-close>Done</button>' });
+  s.body.addEventListener("click", ev => {
+    const r = ev.target.closest("[data-pid]"); if (!r) return;
+    toggleProto(r.dataset.pid); const on = cur().protocols.includes(r.dataset.pid); r.classList.toggle("on", on); r.setAttribute("aria-pressed", on);
+  });
+}
+/* ---------- Ask Claude: one chat per entry, kept while the page stays open ---------- */
+const ASK_MAX_TURNS = 24, ASK_PROTO_CAP = 120000, ASK_TOOL_CAP = 30000, ASK_MAX_IMAGES = 6, ASK_SEARCH_HITS = 40, ASK_LIST_MAX = 80;
+const ASK_RULES = `You are the Ask panel inside ATG ELN, a scientist's bench notebook (stem-cell and molecular biology: iPSC culture, nucleofection, CRISPR knock-ins, PiggyBac, iNeuron differentiation, cloning). The scientist reads you on an iPad or phone at the bench and can reply: this is a conversation, so you never have to guess.
+
+ASK BEFORE YOU ASSUME
+- First work out which inputs the answer depends on. Take each one from the entry, the linked protocols or their earlier messages when it is stated there, and say in a few words where it came from.
+- If an input that would change the answer is missing, or the notebook offers more than one candidate for it (which sample, construct or condition; the starting concentration or which stock; the final volume; plate format and volume per well; how many dilution steps; whether a count was taken before or after a dilution), do not pick one. Reply with only your questions: at most three, numbered, one line each, and end each line with two to four short answers in square brackets that they can tap, likeliest first, taken from the notebook where possible ("1. Which sample? [pTG825] [pTG1313] [both]", "2. Final volume? [5 ml] [10 ml]"). They can also type a different answer. Use square brackets for nothing else. Then stop and wait for their reply.
+- Do not ask about anything the entry, the protocols or the conversation already settles, or about details that would not change the answer. If only a minor convention is open, use the standard one and name it in one line.
+- Never invent a number, a concentration or a protocol step. If the notebook does not have it, say so.
+
+BE TO THE POINT
+- Start with the answer itself. No preamble, no restating the question, no recap of the entry, no closing offer.
+- Give only what was asked. No alternative scenarios or extra cases unless they ask for them.
+- For amounts, give a table, then one line of arithmetic per row that they can check. Keep pipetting volumes practical and flag anything under 1 µl or larger than the tube.
+- Tables are Markdown pipe tables. Use **bold** sparingly and no headings.
+- Lines may have been dictated and contain misheard words. Read them by sound and context, and ask if a doubtful word matters to the answer.
+
+LOOKING THINGS UP
+The open entry and its linked protocols are below; photos and handwritten notes are attached as images only when they have switched that on, otherwise you see their captions and transcripts. Other protocols and entries are listed by id: use read_protocol, read_entry and search_entries when the answer may be there (an earlier cell count, a stock concentration, a protocol that is not linked) before asking them for it. You cannot browse the web.`;
+const askThreads = new Map();   /* entry id -> { turns, live, error, notice, images, draft } */
+let askView = null;             /* { id, render } while the Ask sheet is open */
+const askFresh = () => ({ turns: [], live: null, error: "", notice: "", draft: "", picks: {} });
+/* a question line Claude wrote as "1. Which sample? [pTG825] [pTG1313]": the bracketed answers become buttons */
+const ASK_Q = /^\s*(\d+)[.)]\s+(.*?)((?:\s*\[[^\[\]]{1,60}\]){2,})\s*$/;
+const askQuestions = content => content.split("\n").map((l, line) => { const m = l.match(ASK_Q); return m ? { line, n: m[1], text: m[2].trim(), opts: [...m[3].matchAll(/\[([^\[\]]+)\]/g)].map(x => x[1].trim()) } : null; }).filter(Boolean);
+function askBody(content, picks) {
+  const qs = askQuestions(content); if (!qs.length) return mdLite(content);
+  const parts = []; let buf = [];
+  const flush = () => { if (buf.length) { parts.push(mdLite(buf.join("\n"))); buf = []; } };
+  content.split("\n").forEach((l, i) => {
+    const qi = qs.findIndex(q => q.line === i); if (qi < 0) { buf.push(l); return; }
+    flush(); const q = qs[qi];
+    parts.push(`<div class="askq"><p>${esc(q.n)}. ${esc(q.text)}</p>` + (picks
+      ? `<div class="opts">${q.opts.map((o, k) => `<button class="btn small" data-q="${qi}" data-opt="${k}" aria-pressed="${picks[qi] === o}">${esc(o)}</button>`).join("")}</div>`
+      : `<p class="byline">${q.opts.map(esc).join(" · ")}</p>`) + `</div>`);
+  });
+  flush(); return parts.join("");
+}
+const askThread = id => askThreads.get(id) || askFresh();
+function setAsk(id, patch) { askThreads.set(id, { ...askThread(id), ...patch }); if (askView && askView.id === id) askView.render(); }
+const askImageBlocks = e => e.blocks.filter(b => (b.type === "photo" || b.type === "ink") && !b.pending && (b.url || b.assetId));
+function askContext(id, e) {
+  const others = [...state.entries.entries()].filter(([x]) => x !== id).sort((a, b) => (b[1].updatedAt || "").localeCompare(a[1].updatedAt || "")).slice(0, ASK_LIST_MAX);
+  const unlinked = state.protocols.filter(p => !e.protocols.includes(p.id));
+  return `Today: ${ymd(new Date())}
+
+OPEN ENTRY: ${e.title}
+Lines, oldest first:
+${entryText(e, Infinity) || "(no lines yet)"}
+
+${e.protocols.length ? "PROTOCOLS LINKED TO THIS ENTRY (full text):" + protoText(e.protocols, ASK_PROTO_CAP) : "No protocols are linked to this entry."}
+
+OTHER PROTOCOLS IN THE LIBRARY (id: title), readable with read_protocol:
+${unlinked.map(p => `${p.id}: ${p.title}`).join("\n") || "(none)"}
+
+OTHER ENTRIES (id: title), newest first, readable with read_entry:
+${others.map(([x, o]) => `${x}: ${o.title}`).join("\n") || "(none)"}`;
+}
+function askTools(note) {
+  const str = (v, max = 200) => String(v ?? "").trim().slice(0, max);
+  return [
+    { name: "read_protocol", description: "Returns the full text of one protocol from the library, given its id from the list. Use it for a protocol that is not linked to the open entry.",
+      inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+      execute: input => { const p = state.protocols.find(x => x.id === str(input.id)); if (!p) throw new Error("No protocol with that id. Use an id from the library list."); note("Reading " + p.title + "…"); return { title: p.title, text: String(p.text || "").slice(0, ASK_TOOL_CAP) }; } },
+    { name: "read_entry", description: "Returns the title and all lines of another notebook entry, given its id from the list. Use it to find earlier counts, concentrations or what was done on another day.",
+      inputSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+      execute: input => { const o = state.entries.get(str(input.id)); if (!o) throw new Error("No entry with that id. Use an id from the entries list."); note("Reading " + o.title + "…"); return { title: o.title, lines: entryText(o, Infinity).slice(0, ASK_TOOL_CAP) }; } },
+    { name: "search_entries", description: "Searches every notebook entry for lines containing all the words of the query (case-insensitive) and returns matching lines with their entry id and title. Use short queries such as a sample or plasmid name.",
+      inputSchema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
+      execute: input => {
+        const words = str(input.query).toLowerCase().split(/\s+/).filter(Boolean); if (!words.length) throw new Error("Give a query of one or more words.");
+        note("Searching entries for " + words.join(" ") + "…");
+        const hits = [];
+        for (const [x, o] of state.entries) for (const b of o.blocks) {
+          const line = [b.text, b.caption, b.transcript].filter(Boolean).join(" ");
+          if (line && words.every(w => line.toLowerCase().includes(w))) hits.push({ entry: x, title: o.title, at: b.at, line: line.slice(0, 600) });
+        }
+        return { total: hits.length, hits: hits.slice(-ASK_SEARCH_HITS) };
+      } }
+  ];
+}
+async function askImages(e, max) {
+  const picked = askImageBlocks(e).slice(-max);
+  const got = await Promise.all(picked.map(b => fetch(b.url || "/_blob/" + b.assetId).then(r => r.ok ? r.blob() : null).catch(() => null)));
+  const blobs = got.filter(Boolean);
+  return { blobs, failed: got.length - blobs.length, skipped: askImageBlocks(e).length - picked.length };
+}
+async function askSend(id) {
+  const e = state.entries.get(id); if (!e || !state.sample || askThread(id).live) return;
+  const last = askThread(id).turns.at(-1); if (!last || last.role !== "user") return;   /* a call must end on his message */
+  const ctrl = new AbortController(), mine = () => { const l = askThread(id).live; return !!l && l.ctrl === ctrl; };
+  const live = patch => { if (mine()) setAsk(id, { live: { ...askThread(id).live, ...patch } }); };
+  setAsk(id, { live: { ctrl, text: "", note: "" }, error: "", notice: "" });
+  try {
+    const lim = await state.sample.limits().catch(() => ({}));
+    const model = modelOpts(state.settings.askModel);
+    const opts = { ...model, cache: false, signal: ctrl.signal, onText: u => live({ text: u.text }) };
+    if (model.modelTier === "complex") opts.effort = "high";
+    if (lim.tools) opts.tools = askTools(note => live({ note }));
+    let notice = "";
+    if (state.settings.askPhotos && lim.images && askImageBlocks(e).length) {
+      live({ note: "Attaching photos and handwriting…" });
+      const im = await askImages(e, Math.min(lim.images.maxCount || 1, ASK_MAX_IMAGES));
+      if (im.blobs.length) opts.images = im.blobs;
+      notice = [im.failed ? `${im.failed} image${im.failed === 1 ? "" : "s"} couldn't be attached.` : "", im.skipped ? `Only the newest ${im.blobs.length + im.failed} images were sent.` : ""].filter(Boolean).join(" ");
+      live({ note: "" });
+    }
+    if (!mine()) return;
+    /* the waits above may have seen Stop, a new line, or the entry deleted: look the entry up again (docs/decisions.md, "Frozen data") */
+    const now = state.entries.get(id);
+    if (ctrl.signal.aborted || !now) { setAsk(id, { live: null, error: now ? "" : "This entry no longer exists." }); return; }
+    const turns = askThread(id).turns.slice(-ASK_MAX_TURNS).map(({ role, content }) => ({ role, content }));
+    const r = await state.sample([{ role: "user", content: ASK_RULES + "\n\n" + askContext(id, now) }, ...turns], opts);
+    if (!mine()) return;
+    setAsk(id, { live: null, notice, turns: [...askThread(id).turns, { role: "assistant", content: r.text + (r.truncated ? "\n\n[answer cut short]" : ""), by: answeredBy(r) }] });
+  } catch (err) {
+    if (!mine()) return;
+    const stopped = !!err && err.code === "cancelled";
+    /* keep a partial answer only when he pressed Stop; after a failure the thread must still end on his question so Try again works */
+    const partial = stopped && typeof err.text === "string" ? err.text.trim() : "";
+    const turns = partial ? [...askThread(id).turns, { role: "assistant", content: partial + "\n\n[stopped]", by: "" }] : askThread(id).turns;
+    setAsk(id, { live: null, turns, error: stopped ? "" : sampleError(err) });
+  }
+}
+function openAsk() {
+  const id = state.openId, e = cur(); if (!e || !state.sample) return;
+  const body = `<div class="ask-log" id="askLog" aria-live="polite"></div>
+    <div class="ask-comp"><textarea class="box" id="askQ" rows="2" placeholder="Ask about this entry, or answer Claude's question" aria-label="Message to Claude"></textarea>
+      <div class="comp-row"><select class="sel" id="askModel" aria-label="Model">${MODELS.map(m => `<option value="${m.id}"${m.id === state.settings.askModel ? " selected" : ""}>${esc(m.label)}</option>`).join("")}</select>
+        <span class="grow"></span>
+        <button class="btn" id="askStop" hidden>Stop</button><button class="btn primary" id="askGo">Send</button></div></div>`;
+  const s = sheet("Ask Claude", body, { headBtn: '<button class="btn small" id="askNew">New chat</button>', onClose: () => { askView = null; setAsk(id, { draft: q.value }); } });
+  s.el.classList.add("ask");
+  const $s = sel => s.body.querySelector(sel);
+  const q = $s("#askQ"), log = $s("#askLog"), go = $s("#askGo"), stop = $s("#askStop");
+  const render = () => {
+    const t = askThread(id), stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+    log.innerHTML = (t.turns.length || t.live ? "" : `<p class="note" style="padding:0">Claude sees this whole entry and its linked protocols${e.protocols.length ? "" : " (none linked yet)"}, and can look up your other protocols and entries. It asks you when something it needs isn't in the notebook; tap an answer or type one. Photos and handwriting are ${state.settings.askPhotos ? "sent too" : "not sent (switch in Settings)"}. The chat stays here while you go back to the entry.</p>`)
+      + t.turns.map((m, i) => m.role === "user" ? `<div class="msg user">${esc(m.content)}</div>`
+        : `<div class="msg claude"><div class="doc">${askBody(m.content, i === t.turns.length - 1 && !t.live ? t.picks : null)}</div><div class="comp-row" style="margin-top:8px"><span class="byline">${m.by ? "Answered by " + esc(m.by) : ""}</span><span class="grow"></span><button class="btn small" data-add="${i}">${ICON.plus}Add as line</button></div></div>`).join("")
+      + (t.live ? `<div class="msg claude live"><div class="doc">${t.live.text ? mdLite(t.live.text) : `<p class="byline">${esc(t.live.note || "Thinking…")}</p>`}</div></div>` : "")
+      + (t.error ? `<div class="msg err" role="alert"><span>${esc(t.error)}</span><button class="btn small" data-retry>Try again</button></div>` : "")
+      + (t.notice ? `<div class="msg info">${esc(t.notice)}</div>` : "");
+    go.disabled = !!t.live; stop.hidden = !t.live;
+    if (stick) log.scrollTop = log.scrollHeight;
+  };
+  askView = { id, render };
+  q.value = askThread(id).draft || ""; render(); log.scrollTop = log.scrollHeight;
+  setTimeout(() => q.focus(), 60);
+  const send = tapped => {
+    const typed = typeof tapped !== "string", text = (typed ? q.value : tapped).trim();
+    if (!text || askThread(id).live) { if (typed) q.focus(); return; }
+    if (typed) q.value = "";
+    setAsk(id, { draft: q.value, picks: {}, turns: [...askThread(id).turns, { role: "user", content: text }] });
+    log.scrollTop = log.scrollHeight; askSend(id);
+  };
+  /* one tap per question; the reply goes as soon as every question has an answer */
+  const pick = btn => {
+    const t = askThread(id), last = t.turns.at(-1); if (t.live || !last || last.role !== "assistant") return;
+    const qs = askQuestions(last.content), qi = Number(btn.dataset.q), q1 = qs[qi]; if (!q1) return;
+    const picks = { ...t.picks, [qi]: q1.opts[Number(btn.dataset.opt)] };
+    if (!qs.every((_, k) => picks[k] !== undefined)) { setAsk(id, { picks }); return; }
+    send(qs.length === 1 ? picks[0] : qs.map((x, k) => `${x.n}. ${picks[k]}`).join("\n"));
+  };
+  go.onclick = () => send();
+  q.addEventListener("keydown", ev => { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey)) { ev.preventDefault(); send(); } });
+  stop.onclick = () => { const l = askThread(id).live; if (l) l.ctrl.abort(); };
+  $s("#askModel").onchange = ev => saveSettings({ askModel: ev.target.value });
+  s.el.querySelector("#askNew").onclick = () => { const t = askThread(id); if (t.live) t.live.ctrl.abort(); askThreads.set(id, askFresh()); render(); q.focus(); };
+  log.addEventListener("click", ev => {
+    if (ev.target.closest("[data-retry]")) { askSend(id); return; }
+    const opt = ev.target.closest("[data-opt]"); if (opt) { pick(opt); return; }
+    const add = ev.target.closest("[data-add]"); if (!add) return;
+    const m = askThread(id).turns[Number(add.dataset.add)]; if (!m) return;
+    addBlock({ id: uid(), type: "text", text: "Claude: " + m.content.trim(), at: new Date().toISOString() }); toast("Added to the entry.");
+  });
+}
+function openMore() {
+  const e = cur(); if (!e) return;
+  const body = `<dl class="meta-grid"><dt>Started</dt><dd>${esc(nice(e.createdAt))}</dd><dt>Last change</dt><dd>${esc(e.updatedAt ? nice(e.updatedAt) + " " + hm(e.updatedAt) : "—")}</dd><dt>Benchling</dt><dd>${e.lastTransfer?.at ? "Transferred " + esc(nice(e.lastTransfer.at) + " " + hm(e.lastTransfer.at)) : "Not transferred yet"}</dd></dl>
+    <p class="note" style="padding:0">To move this entry, say in any Claude chat: “Transfer today’s ATG ELN notes to Benchling.” Claude marks the lines it moved; lines added later get an amber dot.</p>
+    <h3 class="needs-sample">Lab terms</h3>
+    <div class="field needs-sample"><button class="btn" id="fixAll">${ICON.fix}Fix terms in every line</button>
+      <button class="btn" id="fixUndo" hidden>${ICON.undo}Undo all</button>
+      <span class="help">Checks each text line against your vocabulary, the way the Fix terms button does for one line.</span></div>
+    <h3>Delete</h3><button class="btn danger" id="delEntry">${ICON.trash}Delete this entry</button>`;
+  const s = sheet("Entry details", body);
+  const fa = s.body.querySelector("#fixAll"); if (fa) fa.onclick = () => fixAllLines(fa);
+  s.body.querySelector("#delEntry").onclick = ev => armDelete(ev.currentTarget, async () => {
+    const id = state.openId; s.close();
+    const assetIds = e.blocks.map(b => b.assetId).filter(Boolean);
+    state.entries.delete(id); closeEntry();
+    try { await state.db.doc("entries/" + id).delete(); if (state.assets) assetIds.forEach(a => state.assets.delete(a).catch(() => {})); toast("Entry deleted."); }
+    catch (err) { toast("Couldn't delete the entry: " + (err.message || err.code)); }
+  });
+}
+async function saveSettings(patch) {
+  Object.assign(state.settings, patch);
+  if (!state.db) return;
+  try { await state.db.doc("config/settings").set({ ...state.settings }); } catch (err) { toast("Couldn't save settings: " + (err.message || err.code)); }
+}
+function openSettings() {
+  const st = state.settings, g = state.glossary;
+  const modelSel = (id, val) => `<select class="sel" id="${id}">${MODELS.map(m => `<option value="${m.id}"${m.id === val ? " selected" : ""}>${esc(m.label)}</option>`).join("")}</select>`;
+  const body = `<h3>Claude helper</h3>
+    <div class="field"><label for="sFix">Model for fixing terms and reading handwriting</label>${modelSel("sFix", st.fixModel)}<span class="help">Quick is usually enough for spelling fixes. If a named model isn't available on your plan, Claude uses the matching tier and the note under the fix says which model answered.</span></div>
+    <div class="field"><label for="sAsk">Model for questions</label>${modelSel("sAsk", st.askModel)}</div>
+    <button class="toggle" id="sAskPhotos" role="switch" aria-checked="${!!st.askPhotos}"><span>Send the entry's photos and handwriting with questions (slower)</span><span class="sw"></span></button>
+    <button class="toggle" id="sAuto" role="switch" aria-checked="${!!st.autoFix}"><span>Fix lab terms automatically when dictation stops</span><span class="sw"></span></button>
+    <h3>Dictation</h3>
+    <div class="field"><label for="sLang">Language</label><select class="sel" id="sLang">${[["en-US", "English (US)"], ["en-GB", "English (UK)"], ["tr-TR", "Turkish"]].map(([v, n]) => `<option value="${v}"${v === st.lang ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+    <div class="field"><span class="help" id="vLearned"></span><span class="help">Fix terms learns how dictation mishears you from the corrections you accept, and uses it as evidence next time.</span><button class="btn" id="vForget" type="button">${ICON.trash}Forget</button></div>
+    <h3>Lab vocabulary</h3>
+    <p class="note" style="padding:0">Fix terms uses this list as its reference: anything dictation wrote that sounds like one of these terms is replaced with the term. Add a term once, spelled the way you want it written — one entry covers its whole word family, so “nucleofector” also catches nucleofection and nucleofected.</p>
+    <form class="vadd" id="vForm"><input id="vNew" placeholder="Add a term, e.g. KOLF2.1J-NGN2" aria-label="New vocabulary term" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"><button class="btn primary" type="submit">${ICON.plus}Add</button></form>
+    <input class="search" id="vFilter" type="search" placeholder="Search vocabulary" aria-label="Search vocabulary" autocomplete="off">
+    <span class="help" id="vCount"></span>
+    <div class="terms" id="vList"></div>
+    <div class="field needs-sample"><label>Grow it from your entries</label>
+      <span class="help">Claude reads the entries in this notebook and suggests lab terms that aren't in the vocabulary yet. You choose which to add.</span>
+      <button class="btn" id="vFind" type="button">${ICON.fix}Find terms in my entries</button>
+      <div class="terms" id="vSug" hidden></div>
+      <button class="btn primary" id="vAddAll" type="button" hidden>${ICON.plus}Add all</button>
+    </div>
+    <h3>Moving notes to Benchling</h3>
+    <p class="note" style="padding:0">In any Claude chat, say “Transfer today’s ATG ELN notes to Benchling.” Claude reads the day’s lines, photos and handwriting from here, writes them into your notebook, and marks each entry as transferred.</p>`;
+  const s = sheet("Settings", body);
+  const b = s.body;
+  b.querySelector("#sFix").onchange = ev => saveSettings({ fixModel: ev.target.value });
+  b.querySelector("#sAsk").onchange = ev => saveSettings({ askModel: ev.target.value });
+  b.querySelector("#sLang").onchange = ev => saveSettings({ lang: ev.target.value });
+  b.querySelector("#sAskPhotos").onclick = ev => { const on = ev.currentTarget.getAttribute("aria-checked") !== "true"; ev.currentTarget.setAttribute("aria-checked", on); saveSettings({ askPhotos: on }); };
+  b.querySelector("#sAuto").onclick = ev => { const on = ev.currentTarget.getAttribute("aria-checked") !== "true"; ev.currentTarget.setAttribute("aria-checked", on); saveSettings({ autoFix: on }); };
+  const drawLearned = () => { const n = state.voice.pairs.reduce((t, p) => t + p.n, 0); b.querySelector("#vLearned").textContent = `Learned from ${n} correction${n === 1 ? "" : "s"}`; b.querySelector("#vForget").disabled = !n; };
+  drawLearned();
+  b.querySelector("#vForget").onclick = ev => armDelete(ev.currentTarget, () => { saveVoice({ pairs: [] }); drawLearned(); toast("Forgot what dictation got wrong."); });
+  const list = b.querySelector("#vList"), filter = b.querySelector("#vFilter"), input = b.querySelector("#vNew");
+  const draw = () => {
+    const q = filter.value.trim().toLowerCase(); const terms = state.glossary.terms;
+    const shown = terms.filter(t => !q || t.toLowerCase().includes(q));
+    b.querySelector("#vCount").textContent = `${terms.length} terms` + (q ? `, ${shown.length} shown` : "") + `. ${state.protocols.length} protocols and templates are also in the library.`;
+    list.innerHTML = shown.length ? shown.map(t => `<span class="term"><span>${esc(t)}</span><button data-term="${esc(t)}" aria-label="Remove ${esc(t)}">${ICON.x}</button></span>`).join("") : `<p class="note" style="padding:0">${q ? "No terms match." : "No terms yet. Add your first one above."}</p>`;
+  };
+  const saveTerms = async (terms, msg) => {
+    if (!state.db) return false;
+    const before = state.glossary.terms; state.glossary = { terms }; draw();
+    try { await state.db.doc("config/glossary").set({ terms }); toast(msg); return true; }
+    catch (err) { state.glossary = { terms: before }; draw(); toast("Couldn't save the vocabulary: " + (err.message || err.code)); return false; }
+  };
+  b.querySelector("#vForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const t = input.value.trim(); if (!t) { input.focus(); return; }
+    if (state.glossary.terms.some(x => x.toLowerCase() === t.toLowerCase())) { toast(`“${t}” is already in the vocabulary.`); return; }
+    input.value = ""; filter.value = ""; input.focus();
+    saveTerms([t, ...state.glossary.terms], `Added “${t}”.`);
+  });
+  filter.addEventListener("input", draw);
+  list.addEventListener("click", ev => {
+    const r = ev.target.closest("[data-term]"); if (!r) return; const t = r.dataset.term;
+    const all = state.glossary.terms;
+    saveTerms(all.filter(x => x !== t), `Removed “${t}”.`);
+  });
+  /* suggestions drawn from the notebook's own entries */
+  let sug = [];
+  const sugBox = b.querySelector("#vSug"), addAll = b.querySelector("#vAddAll"), find = b.querySelector("#vFind");
+  const drawSug = () => {
+    const have = new Set(state.glossary.terms.map(t => t.toLowerCase())); sug = sug.filter(t => !have.has(t.toLowerCase()));
+    sugBox.hidden = !sug.length; addAll.hidden = sug.length < 2;
+    sugBox.innerHTML = sug.map(t => `<span class="term sug"><span>${esc(t)}</span><button data-add="${esc(t)}" aria-label="Add ${esc(t)}">${ICON.plus}</button></span>`).join("");
+  };
+  find.onclick = async () => {
+    if (!state.sample) return;
+    let text = "";
+    for (const [, e] of [...state.entries.entries()].sort((x, y) => (y[1].updatedAt || "").localeCompare(x[1].updatedAt || ""))) {
+      const t = `\n## ${e.title}\n` + e.blocks.map(k => [k.text, k.caption, k.transcript].filter(Boolean).join(" ")).filter(Boolean).join("\n");
+      if (text.length + t.length > 60000) break; text += t;
+    }
+    if (!text.trim()) { toast("There are no entries to read yet."); return; }
+    find.disabled = true; const label = find.innerHTML; find.innerHTML = ICON.fix + "Reading entries…";
+    try {
+      const r = await state.sample(`Below are a scientist's lab notebook entries (stem-cell and molecular biology) and their current lab vocabulary. List lab terms that appear in the entries and are missing from the vocabulary: reagents, media, kits, cell lines, genes and proteins, plasmid and sample IDs, instruments, programs, techniques and lab abbreviations. Some lines were dictated and may contain misheard words: include a term only if you are confident it is a real term, and give it in its correct spelling. Skip ordinary English words, dates, numbers, units and anything already in the vocabulary (ignoring case). At most 60 terms.
+Return only JSON: {"terms": ["..."]}
+
+Current vocabulary: ${state.glossary.terms.join("; ")}
+
+Entries:
+${text}`, { ...modelOpts(state.settings.askModel), cache: false });
+      const j = parseJSON(r.text);
+      sug = [...new Set((Array.isArray(j.terms) ? j.terms : []).map(t => String(t).trim()).filter(t => t && t.length < 80))];
+      drawSug();
+      toast(sug.length ? `${sug.length} suggested by ${answeredBy(r)}. Tap + to add.` : "No new terms found in your entries.");
+    } catch (err) { toast(sampleError(err)); }
+    finally { find.disabled = false; find.innerHTML = label; }
+  };
+  sugBox.addEventListener("click", async ev => {
+    const r = ev.target.closest("[data-add]"); if (!r) return; const t = r.dataset.add;
+    if (await saveTerms([t, ...state.glossary.terms], `Added “${t}”.`)) drawSug();
+  });
+  addAll.onclick = async () => { const n = sug.length; if (await saveTerms([...sug, ...state.glossary.terms], `Added ${n} terms.`)) drawSug(); };
+  const onVocab = () => { if (b.isConnected) draw(); else window.removeEventListener("eln-vocab", onVocab); };
+  window.addEventListener("eln-vocab", onVocab);
+  draw();
+}
+function view(src) {
+  const v = document.createElement("div"); v.className = "viewer"; v.setAttribute("role", "dialog");
+  v.innerHTML = `<img alt="Full size"><button class="btn icon" aria-label="Close">${ICON.x}</button>`;
+  v.querySelector("img").src = src; v.onclick = () => v.remove(); document.body.appendChild(v);
+}
+
+/* ---------- screen awake while working ---------- */
+let wake = null;
+async function keepAwake() { try { if ("wakeLock" in navigator && !wake && document.visibilityState === "visible") { wake = await navigator.wakeLock.request("screen"); wake.addEventListener("release", () => { wake = null; }); } } catch (_) { wake = null; } }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (state.openId || dict.on)) keepAwake(); });
+
+/* ---------- keep the app inside the visible area, above the on-screen keyboard ---------- */
+function fitViewport() {
+  const vv = window.visualViewport;
+  const h = Math.round(vv ? vv.height : window.innerHeight);
+  document.documentElement.style.setProperty("--app-h", h + "px");
+  document.body.classList.toggle("tight", h < 620);
+  if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
+}
+if (window.visualViewport) { visualViewport.addEventListener("resize", fitViewport); visualViewport.addEventListener("scroll", fitViewport); }
+window.addEventListener("resize", fitViewport);
+window.addEventListener("orientationchange", () => setTimeout(fitViewport, 250));
+
+/* ---------- static wiring ---------- */
+function wireStatic() {
+  fitViewport();
+  $("#list").addEventListener("click", ev => { const o = ev.target.closest("[data-open]"); if (o) return openEntry(o.dataset.open); if (ev.target.closest("#newEntry")) newEntry(); });
+  $("#editor").addEventListener("click", ev => { if (ev.target.closest("#blankNew")) newEntry(); });
+  $("#search").addEventListener("input", ev => { state.filter = ev.target.value; renderRail(); });
+  $("#openSettings").onclick = openSettings;
+  $("#camInput").onchange = ev => { const f = [...ev.target.files]; ev.target.value = ""; if (f.length && state.openId) onFiles(f, "photo"); };
+  $("#libInput").onchange = ev => { const f = [...ev.target.files]; ev.target.value = ""; if (f.length && state.openId) onFiles(f, "library"); };
+  window.addEventListener("beforeunload", () => { for (const id of timers.keys()) flush(id); });
+}
+boot();
+})();
+</script>
+
+</body></html>

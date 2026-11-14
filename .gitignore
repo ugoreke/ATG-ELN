@@ -1,0 +1,19 @@
+# dependencies and test output
+node_modules/
+test-results/
+.DS_Store
+
+# private to each person's copy: never commit notebook data or protocols
+data/protocols/
+data/entries/
+data/voice.json
+data/*.private.json
+
+# local development notes and Claude Code project files
+docs/
+CLAUDE.md
+.claude/
+
+# images: only the README demo is tracked
+*.png
+!demo/*.png

@@ -1,0 +1,13 @@
+{
+  "name": "atg-eln",
+  "private": true,
+  "description": "ATG ELN: bench notebook app for iPad and phone, published as a Claude artifact.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test --test-concurrency=1 tests/*.test.mjs",
+    "setup": "npm install && npx playwright install chromium"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
