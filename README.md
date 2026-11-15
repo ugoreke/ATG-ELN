@@ -40,6 +40,17 @@ You need a Claude account. Each person publishes their own copy, so notebooks ar
 
 These steps have not been tried from scratch on a second account yet; please open an issue if one of them fails.
 
+## Moving notes to Benchling
+
+The app records; a Claude session does the transfer. Open a Claude Code session in this folder and say **"Transfer today's notes to Benchling."** The project instructions load by themselves (`CLAUDE.md` pulls in `project-instructions.md`), so there is nothing to paste. Claude reads the day's entries from your ATG ELN artifact, writes them into your Benchling notebook through the browser, uploads the photos, and marks the lines as transferred in the app.
+
+- The first time, Claude asks for your Benchling address, project and the email account to search, and saves them in `CLAUDE.local.md`, which stays on your machine.
+- You must be signed in to Benchling in the browser Claude uses; it never types credentials.
+- `scratch/` is working space for these sessions, for example copies of transferred photos. Its contents are never committed.
+- If you use a Claude chat project instead of Claude Code, paste `project-instructions.md` into the project's custom instructions.
+
+The instructions come from one person's working setup and Benchling layout; expect to adjust the template and naming sections to yours.
+
 ## Working on it
 
 ```bash
@@ -51,4 +62,4 @@ The whole app is `src/index.html`. The tests run it against a stand-in for the C
 
 ## Privacy
 
-This repository holds the app, its tests and a vocabulary list. It contains no notebook entries and no protocols.
+This repository holds the app, its tests, a vocabulary list and the project instructions. It contains no notebook entries, no protocols and nobody's personal settings.

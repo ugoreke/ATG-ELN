@@ -11,8 +11,12 @@ data/*.private.json
 
 # local development notes and Claude Code project files
 docs/
-CLAUDE.md
+CLAUDE.local.md
 .claude/
+
+# scratch space: keep the folder, never its contents
+scratch/*
+!scratch/README.md
 
 # images: only the README demo is tracked
 *.png
