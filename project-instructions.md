@@ -3,7 +3,7 @@
 These load automatically in a Claude Code session opened in this folder (through `CLAUDE.md`). In a Claude chat project, paste them into the project's custom instructions instead. "Your settings" means the values in `CLAUDE.local.md`.
 
 ## Purpose
-Help the user keep their Benchling ELN complete, consistent and fast to write: new entries from templates or one-off, edits to existing entries, new templates, plasmid/registry records, daily transfers from ATG ELN, and questions answered from their notes.
+Help the user keep their Benchling ELN complete, consistent and fast to write: new entries from templates or one-off, edits to existing entries, new templates, plasmid/registry records, transfers from ATG ELN, and questions answered from their notes.
 
 ## Access
 - Benchling address: from your settings. Never use a Benchling connector or API.
@@ -14,19 +14,38 @@ Help the user keep their Benchling ELN complete, consistent and fast to write: n
 - Do not use: the "Control Chrome" connector (Chrome blocks its scripts), computer use on the Claude app, pop-ups, or a local file server. All were tried and fail.
 - Benchling AI (inside Benchling) is the source for how-to questions about Benchling itself. Ask the user to query it rather than guessing at the UI.
 
-## Daily transfer from ATG ELN ("transfer today's notes")
-1. Source: the user's ATG ELN artifact (find it in the artifact list). Read the "entries" collection from its database; today's entries are those created today in the user's time zone. Photo and sketch blocks carry an assetId; fetch each asset by that id, one per call.
-2. Look at every photo before writing about it.
-3. Search the user's email (the account in your settings) before writing, even when nothing seems missing:
-   - Every cell line, clone, plasmid, sgRNA or sample name in the notes, especially dictated ones that look garbled. Use the spelling from the emails in the entry.
+## Daily transfer from ATG ELN ("transfer my notes")
+The app has five tabs. **Daily** is one running log of everything not yet in Benchling. **Notebooks** mirror Benchling entries, one notebook per entry, with the same name. A transfer writes Daily's lines into Benchling and then moves them, unchanged, into the matching notebooks. Meetings, To-do and Docs are never transferred unless the user asks.
+
+1. Source: the user's ATG ELN artifact (find it in the artifact list). Read the document `logs/daily` from its database and note its version. Its `blocks` are the lines to transfer; the log can span several days. Photo and sketch blocks carry an assetId; fetch each asset by that id, one per call. Read the `entries` collection too: documents without `kind: "meeting"` are the notebooks. If `logs/daily` does not exist or has no blocks, say there is nothing to transfer.
+2. Before changing anything, save a copy of `logs/daily` and of every notebook you will write to in `scratch/` (a dated subfolder).
+3. Look at every photo before writing about it.
+4. Search the user's email (the account in your settings) before writing, even when nothing seems missing:
+   - Every cell line, clone, plasmid, sgRNA or sample name in the notes, especially dictated ones that look garbled. Use the spelling from the emails in the Benchling entry.
    - Every person named in the notes, for what they handed over, its passage, and any protocol or plan they sent.
    - Orders, tracking and shipments for anything received or sent that day.
    Limit to the last 60 days unless the notes point further back. Use what the emails say to fix names and fill fields; do not copy email text into the entry beyond the fact and its date. In the report, list each thing taken from email with the sender and date, so the user can check it.
-4. Do not ask before writing. Build the entries with your best reading of the notes, then report assumptions afterwards in one short list. Leave template fields blank when the notes don't cover them; never ask the user to fill them. Write "not recorded" only for things that matter for reproducing the work. Ask first only if two notes contradict each other on a number, date or sample identity, or if something would be sent to an outside party. Split a mixed day by experiment: add to the existing entry when one exists, create a new one-off entry otherwise, and log every frozen vial where your settings say frozen vials are recorded.
-5. Build the entry (see Creating an entry), then upload photos (see Photos).
-6. Reload, scroll through, and re-read the full text; confirm every photo loaded. Report anything missing.
-7. Mark the ATG ELN entry transferred: update its document with lastTransfer = {at: <now, ISO>, benchlingUrl: <entry URL>}.
-8. If the notes conflict with something sent to an outside party, draft the correction as a reply in the existing email thread. Do not send it.
+5. Do not ask before writing. Build the entries with your best reading of the notes, then report assumptions afterwards in one short list. Leave template fields blank when the notes don't cover them; never ask the user to fill them. Write "not recorded" only for things that matter for reproducing the work. Ask first only if two notes contradict each other on a number, date or sample identity, or if something would be sent to an outside party. Split the log by experiment: add to the existing Benchling entry when one exists, create a new one-off entry otherwise, and log every frozen vial where your settings say frozen vials are recorded.
+6. Build each Benchling entry (see Creating an entry), then upload photos (see Photos).
+7. Reload, scroll through, and re-read the full text in Benchling; confirm every photo loaded. Report anything missing. Do not move a line in the app until its text is confirmed in Benchling.
+8. Move the transferred lines into the app's notebooks (see Moving lines into notebooks). Lines you could not place in Benchling stay in Daily; say which and why.
+9. If the notes conflict with something sent to an outside party, draft the correction as a reply in the existing email thread. Do not send it.
+
+## Moving lines into notebooks (after Benchling is confirmed)
+The rule: a line is moved, not copied, and not edited. It must never be lost and never appear twice, even if the session stops half-way.
+
+- **Match the notebook by name.** The notebook's `title` must equal the Benchling entry's name. If no notebook has that name, create one: a new document in `entries` with a new UUID as its id and `{ title, createdAt, updatedAt, protocols: [], blocks: [], benchlingUrl }`. If a notebook clearly is that entry under an older or shorter name, rename it to the Benchling name instead of creating a second one, and say so in the report.
+- **One batch per notebook, both documents pinned.** In a single database batch write, with each document pinned to the version you read:
+  1. the notebook: `blocks` = its current blocks plus the moved lines, sorted by `at`; set `benchlingUrl` and `updatedAt`. Copy each moved line exactly as it is in Daily (same `id`, `at`, `text`, `caption`, `transcript`, `assetId`, `url`). Skip any line whose `id` is already in the notebook.
+  2. `logs/daily`: `blocks` = its current blocks minus the moved lines; add each moved id to `moved` as `"<line id>": { "to": "<notebook id>", "at": "<now, ISO>" }`; set `updatedAt`.
+  If the batch is refused because a document changed, re-read both documents and build the batch again from what is there now; never retry with old contents. Repeat for the next notebook.
+- **If the batch result says it was not applied all at once,** check the notebook first. A line is done only when it is in the notebook; only then may it be absent from Daily.
+- **Check afterwards.** Wait about ten seconds, re-read the notebook and `logs/daily`, and confirm every moved id is in the notebook exactly once and not in Daily's `blocks`. If a line is missing from the notebook (a device saved an older copy over it), add it back from your saved copy with another pinned write. If a moved line is back in Daily's `blocks`, leave it: the app hides and removes it by itself because its id is in `moved`.
+- **Check the last transfer too.** At the start of every transfer, before moving anything new, go through `moved` in `logs/daily`: every id listed there must be in the notebook named by its `to`. A device that was offline can save an older copy of a notebook hours later and drop a moved line. If one is missing, put it back from the copy saved in `scratch/` (or from the Benchling entry if no copy exists) with a pinned write, and tell the user.
+- **Edits during a transfer.** A line the user changes in Daily while the transfer is running is moved with the wording the session read. If Daily's version changed between your read and your batch, re-read and use the new wording, in Benchling as well.
+- **Tidy `moved`.** Remove entries in `moved` older than 30 days whose ids are not in `blocks`, in the same batch as a move or in a pinned update of their own.
+- Never write to `logs/todo`, and never change a line's `id`, `at` or wording. Meetings (`kind: "meeting"`) are left alone unless the user asks for one to be transferred.
+- **Older notebooks.** Notebooks made before Daily existed may hold lines that were never transferred: a notebook with no `lastTransfer`, or lines with `at` later than `lastTransfer.at`. When the user asks to transfer, include those: write them to Benchling, leave them in their notebook, and set `lastTransfer = { at: <now, ISO>, benchlingUrl }` on that notebook.
 
 ## Creating an entry
 - Go to Benchling, open the Projects sidebar and click the project named in your settings. Click + > Entry > Blank entry, or Entry from template.

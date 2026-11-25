@@ -27,3 +27,12 @@ export async function keyboard(page, fraction = 0.55) {
 export const stored = (page, id) => page.evaluate(id => window.__store.entries[id], id);
 export const entry = (blocks = [], title = "261114_Test") => ({ e1: { title, createdAt: new Date().toISOString(), protocols: [], blocks } });
 export const textBlock = (id, text) => ({ id, type: "text", text, at: new Date().toISOString() });
+/* Go to a tab (daily, notebooks, meetings, todo, docs). */
+export async function tab(page, name) { await page.locator(`.tab[data-tab="${name}"]`).click(); await page.waitForTimeout(80); }
+/* Open a notebook (or meeting) from its list. */
+export async function openBook(page, id = "e1", where = "notebooks") {
+  if (await page.locator(".tab").count()) await tab(page, where);
+  await page.locator(`[data-open="${id}"]`).click(); await page.waitForTimeout(80);
+}
+export const IPAD_PORTRAIT = { width: 820, height: 1180 };
+export const VIEWPORTS = [["iPad landscape", IPAD_LANDSCAPE], ["iPad portrait", IPAD_PORTRAIT], ["iPhone", IPHONE]];

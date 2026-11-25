@@ -2,12 +2,13 @@
 // Each test names the bug or behaviour it protects; see docs/history.md.
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { open, close, keyboard, stored, entry, textBlock, IPHONE, IPAD_LANDSCAPE } from "./helpers.mjs";
+import { open, close, openBook, tab, keyboard, stored, entry, textBlock, IPHONE, IPAD_LANDSCAPE } from "./helpers.mjs";
 
 after(close);
 
 test("new entry: Cancel creates nothing, Create entry creates it", async () => {
   const { page, errors } = await open(IPHONE);
+  await tab(page, "notebooks");
   await page.tap("#newEntry"); await page.tap("#newCancel"); await page.waitForTimeout(100);
   assert.equal(Object.keys(await page.evaluate(() => window.__store.entries)).length, 0);
   await page.tap("#newEntry"); await page.fill("#newTitle", "261114_PAPA_Nucleofection"); await page.tap("#newCreate"); await page.waitForTimeout(200);
@@ -18,7 +19,7 @@ test("new entry: Cancel creates nothing, Create entry creates it", async () => {
 
 test("text lines save and stay visible on iPhone (frozen data, v4 bug)", async () => {
   const { page, errors } = await open(IPHONE, { entries: entry([textBlock("a", "existing line")]) });
-  await page.tap('[data-open="e1"]'); await page.tap("#tText");
+  await openBook(page); await page.tap("#tText");
   for (const t of ["first", "second"]) { await page.fill("#compTa", t); await page.tap("#compAdd"); await page.waitForTimeout(150); }
   const e = await stored(page, "e1");
   assert.deepEqual(e.blocks.map(b => b.text), ["existing line", "first", "second"]);
@@ -29,7 +30,7 @@ test("text lines save and stay visible on iPhone (frozen data, v4 bug)", async (
 
 test("handwriting: Add + new page keeps the canvas open for the next note", async () => {
   const { page, errors } = await open(IPAD_LANDSCAPE, { entries: entry() });
-  await page.click('[data-open="e1"]'); await page.click("#tDraw"); await page.waitForTimeout(200);
+  await openBook(page); await page.click("#tDraw"); await page.waitForTimeout(200);
   const c = await page.locator(".paper canvas").boundingBox();
   for (const action of ["next", "done"]) {
     await page.mouse.move(c.x + 40, c.y + 40); await page.mouse.down(); await page.mouse.move(c.x + 160, c.y + 100, { steps: 5 }); await page.mouse.up();
@@ -43,7 +44,7 @@ test("handwriting: Add + new page keeps the canvas open for the next note", asyn
 for (const [name, vp] of [["iPad landscape", IPAD_LANDSCAPE], ["iPhone", IPHONE]]) {
   test(`keyboard open on ${name}: Add line and tools stay on screen`, async () => {
     const { page, errors } = await open(vp, { entries: entry([textBlock("a", "line")]) });
-    await page.click('[data-open="e1"]'); await page.click("#tText"); await keyboard(page);
+    await openBook(page); await page.click("#tText"); await keyboard(page);
     const m = await page.evaluate(() => {
       const vh = visualViewport.height, add = document.querySelector("#compAdd").getBoundingClientRect(), dock = document.querySelector(".dock");
       return { vh, add: add.bottom, dockShown: getComputedStyle(dock).display !== "none", dock: dock.getBoundingClientRect().bottom, scroll: document.querySelector(".editor").scrollHeight - document.querySelector(".editor").clientHeight };
@@ -62,7 +63,7 @@ test("Fix terms with an empty box fixes the last line, in two passes, and asks a
       return { text: JSON.stringify({ text: line.replace("new cliff fiction", "nucleofection"), changes: [{ from: "new cliff fiction", to: "nucleofection" }] }), modelApplied: "claude-sonnet-5-5" };
     return { text: JSON.stringify({ text: line, changes: [], unsure: [{ words: "seed dance", guesses: ["Seahorse"] }] }), modelApplied: "claude-sonnet-5-5" };`;
   const { page, errors } = await open(IPHONE, { entries: entry([textBlock("a", "doing new cliff fiction for the seed dance plates")]), glossary: ["nucleofection"], sampleScript });
-  await page.tap('[data-open="e1"]'); await page.tap("#tText"); await page.tap("#compFixBtn"); await page.waitForTimeout(300);
+  await openBook(page); await page.tap("#tText"); await page.tap("#compFixBtn"); await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__prompts.length), 2, "term pass + context pass");
   assert.equal((await stored(page, "e1")).blocks[0].text, "doing nucleofection for the seed dance plates");
   assert.ok(await page.isVisible(".unsure"));
@@ -76,7 +77,7 @@ test("Fix terms with an empty box fixes the last line, in two passes, and asks a
 
 test("a failed save keeps the line, warns, and retries", async () => {
   const { page, errors } = await open(IPHONE, { entries: entry(), failFirstUpdate: true });
-  await page.tap('[data-open="e1"]'); await page.tap("#tText"); await page.fill("#compTa", "during outage"); await page.tap("#compAdd"); await page.waitForTimeout(250);
+  await openBook(page); await page.tap("#tText"); await page.fill("#compTa", "during outage"); await page.tap("#compAdd"); await page.waitForTimeout(250);
   assert.ok(await page.isVisible("#saveBanner"), "warning shown");
   await page.waitForTimeout(5500);
   assert.deepEqual((await stored(page, "e1")).blocks.map(b => b.text), ["during outage"]);

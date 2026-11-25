@@ -1,18 +1,22 @@
 # ATG ELN
 
-A bench notebook for iPad and iPhone. You record an experiment line by line while you work: typed or dictated text, photos and Apple Pencil handwriting. Each line is timestamped and grouped by day. Claude is built in for fixing dictated lab terms and answering questions about the entry.
+A bench notebook for iPad and iPhone. You record line by line while you work: typed or dictated text, photos and Apple Pencil handwriting. Each line is timestamped and grouped by day. Claude is built in for fixing dictated lab terms and answering questions about your notes.
 
-It is a single web page that runs as a private [Claude artifact](https://claude.ai), so there is no server to set up. Your entries live in your own Claude account and nowhere else.
+It is a single web page that runs as a private [Claude artifact](https://claude.ai), so there is no server to set up. Your notes live in your own Claude account and nowhere else.
 
 ## Demo
 
 These screenshots use made-up data (`node demo/make-demo.mjs` regenerates them).
 
-| An entry on iPad | On iPhone |
+| Daily on iPad | A notebook on iPad |
 |---|---|
-| ![Entry on iPad](demo/entry-ipad.png) | ![Entry on iPhone](demo/entry-iphone.png) |
+| ![Daily on iPad](demo/daily-ipad.png) | ![A notebook on iPad](demo/notebook-ipad.png) |
 
-**Ask asks before it assumes.** When a question depends on something the notebook doesn't settle, Claude asks, and you answer with a tap:
+| Daily on iPhone | To-do on iPhone | Meetings, iPad portrait (Tide theme) |
+|---|---|---|
+| ![Daily on iPhone](demo/daily-iphone.png) | ![To-do on iPhone](demo/todo-iphone.png) | ![Meetings on iPad portrait](demo/meetings-ipad-portrait.png) |
+
+**Ask asks before it assumes.** When a question depends on something the notes don't settle, Claude asks, and you answer with a tap:
 
 ![Claude asks which sample and volume](demo/ask-questions.png)
 
@@ -22,11 +26,20 @@ Then it answers to the point, with numbers you can check:
 
 ## What it does
 
-- **Entries, line by line.** Large buttons for gloved hands. One tap adds another line of the same kind.
+Five tabs:
+
+- **Daily.** The home view: one running log. Open the app and add lines straight away, with large buttons for gloved hands. Everything in Daily is waiting to go to Benchling.
+- **Notebooks.** One notebook per Benchling entry, with the same name, so you can see what was done without opening Benchling. Lines can be edited, and moved or copied to another notebook. Headers count from the notebook's first line: Day 1 to Day 7, then Week 1, Day 1 and so on.
+- **Meetings.** A list of meetings, each with its own lines. They are not sent to Benchling unless you ask.
+- **To-do.** One plain list. Ticked items fold into a Done section in the order you ticked them.
+- **Docs.** For now, your protocol library to read. On narrow screens, slide the tab row sideways to reach it.
+
+And in every place you write:
+
 - **Dictation with Fix terms.** Phone and tablet dictation mishears lab words. Fix terms matches what was written against your vocabulary by sound, asks you about words it is unsure of, and learns from the corrections you accept.
-- **Ask.** A chat about the open entry. Claude sees the whole entry and its linked protocols, can look up your other protocols and entries, and asks short questions instead of guessing.
+- **Ask.** A chat per place (Daily, each notebook, each meeting). Claude sees all its lines and linked protocols, can look up your other protocols and notebooks, and asks short questions instead of guessing.
 - **Photos and handwriting.** Take photos, or write with Apple Pencil; handwriting can be transcribed.
-- **Protocol library.** Link protocols to an entry so Claude uses the right amounts and names.
+- **Themes.** Default, Tide, Bloom, Saffron and Meadow in Settings, each in light and dark.
 
 ## Get your own copy
 
@@ -42,7 +55,7 @@ These steps have not been tried from scratch on a second account yet; please ope
 
 ## Moving notes to Benchling
 
-The app records; a Claude session does the transfer. Open a Claude Code session in this folder and say **"Transfer today's notes to Benchling."** The project instructions load by themselves (`CLAUDE.md` pulls in `project-instructions.md`), so there is nothing to paste. Claude reads the day's entries from your ATG ELN artifact, writes them into your Benchling notebook through the browser, uploads the photos, and marks the lines as transferred in the app.
+The app records; a Claude session does the transfer. Open a Claude Code session in this folder and say **"Transfer my notes to Benchling."** The project instructions load by themselves (`CLAUDE.md` pulls in `project-instructions.md`), so there is nothing to paste. Claude reads the Daily log from your ATG ELN artifact, writes it into your Benchling notebook through the browser and uploads the photos. Once the text is confirmed in Benchling it moves those lines, unchanged, out of Daily and into the notebook named like the Benchling entry (creating the notebook if there is none), so Daily shows only what is left.
 
 - The first time, Claude asks for your Benchling address, project and the email account to search, and saves them in `CLAUDE.local.md`, which stays on your machine.
 - You must be signed in to Benchling in the browser Claude uses; it never types credentials.
@@ -62,4 +75,4 @@ The whole app is `src/index.html`. The tests run it against a stand-in for the C
 
 ## Privacy
 
-This repository holds the app, its tests, a vocabulary list and the project instructions. It contains no notebook entries, no protocols and nobody's personal settings.
+This repository holds the app, its tests, a vocabulary list and the project instructions. It contains no notes, no protocols and nobody's personal settings.

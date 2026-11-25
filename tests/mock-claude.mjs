@@ -7,6 +7,8 @@
 //   failFirstUpdate               make the first entry update reject once (tests save retry)
 //   sample(prompt) -> {text, ...} what "Claude" answers; default: echo the line back unchanged
 //   voice                         initial config/voice doc ({pairs: [...]})
+//   logs                          initial logs collection, e.g. { daily: { blocks: [...] }, todo: { items: [...] } }
+//   failSetOnce                   a document path whose first set() rejects once (tests the To-do save retry)
 //   dictation                     true, or {rejectStart: "not_granted"}: offer the dictation capability (default: null, like Safari)
 //                                 tests drive it with window.__dict.emit("partial"|"final"|"state", payload); window.__dict.calls lists start/stop
 export function installMock(opts) {
@@ -15,6 +17,7 @@ export function installMock(opts) {
   const store = {
     entries: opts.entries || {},
     protocols: opts.protocols || {},
+    logs: opts.logs || {},
     config: { ...(opts.voice ? { voice: opts.voice } : {}), glossary: { terms: opts.glossary || [] }, settings: { fixModel: "claude-sonnet-5-5", askModel: "default", autoFix: true, lang: "en-US", ...(opts.settings || {}) } }
   };
   const L = {}, D = {};
@@ -22,20 +25,28 @@ export function installMock(opts) {
     (L[c] || []).forEach(f => f({ docs: Object.entries(store[c]).map(([id, d]) => ({ id, exists: true, data: () => clone(d) })) }));
     Object.entries(D).forEach(([p, fns]) => { const [cc, id] = p.split("/"); if (cc === c) fns.forEach(f => f({ exists: !!store[cc][id], data: () => clone(store[cc][id] || {}) })); });
   }, 5);
-  let failed = false;
+  let failed = false, failedSet = false;
   const db = {
     collection: c => ({ onSnapshot: f => { (L[c] = L[c] || []).push(f); fire(c); return () => {}; } }),
     doc: p => { const [c, id] = p.split("/"); return {
+      get: async () => ({ id, exists: !!store[c][id], data: () => (store[c][id] ? clone(store[c][id]) : undefined) }),
       onSnapshot: f => { (D[p] = D[p] || []).push(f); fire(c); return () => {}; },
-      set: async d => { store[c][id] = JSON.parse(JSON.stringify(d)); fire(c); },
+      set: async d => {
+        if (opts.failSetOnce === p && !failedSet) { failedSet = true; throw { code: "unavailable", message: "offline" }; }
+        store[c][id] = JSON.parse(JSON.stringify(d)); fire(c);
+      },
       update: async d => {
         if (opts.failFirstUpdate && !failed) { failed = true; throw { code: "unavailable", message: "offline" }; }
+        if (!store[c][id]) throw { code: "invalid_argument", message: "update needs an existing document" };   // like the real store
         Object.assign(store[c][id], JSON.parse(JSON.stringify(d))); fire(c);
       },
       delete: async () => { delete store[c][id]; fire(c); }
     }; }
   };
   window.__store = store; window.__prompts = [];
+  // what a Claude session does from outside the page: change stored documents, then every listener hears it
+  window.__remote = fn => { fn(store); Object.keys(store).forEach(fire); };
+  window.__remoteQuiet = fn => fn(store);   // the same, but no snapshot has reached this device yet
   // sampleScript sees: prompt (all turns joined as text), input (string or turn list, as passed), opts (tools, images…)
   const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
   const answer = opts.sampleScript ? new AsyncFunction("prompt", "input", "opts", opts.sampleScript) : (prompt => {
@@ -56,7 +67,8 @@ export function installMock(opts) {
     return r;
   }, { limits: async () => ({ maxPromptBytes: 262144, images: { maxCount: 5, maxInputBytes: 2e7, mediaTypes: ["image/jpeg", "image/png"] }, tools: { maxCount: 8 } }) });
   let n = 0;
-  const assets = { upload: async () => ({ id: "asset" + (++n), url: "data:image/png;base64,iVBORw0KGgo=" }), delete: async () => ({}) };
+  window.__assetDeletes = [];   // ids the page asked to delete for good
+  const assets = { upload: async () => ({ id: "asset" + (++n), url: "data:image/png;base64,iVBORw0KGgo=" }), delete: async id => { window.__assetDeletes.push(id); return {}; } };
   // dictation: like the runtime's namespace; events are emitted by the test, start() must be called inside the click
   const H = { partial: [], final: [], state: [] };
   const emit = (kind, payload) => H[kind].forEach(f => f(payload));

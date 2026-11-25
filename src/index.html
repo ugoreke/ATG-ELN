@@ -14,7 +14,8 @@
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
   --f-mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
-  --tap:60px; --r:14px;
+  --tap:60px; --r:14px; --tabs-w:116px;
+  --tab1:#33369E; --tab2:#4549D1; --tab3:#6E72DE; --tab4:#A9ACEF; --tab1-ink:#FFFFFF; --tab2-ink:#FFFFFF; --tab3-ink:#101216; --tab4-ink:#101216;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#101217; --surface:#191C23; --surface-2:#20242C; --ink:#E7E9EE; --muted:#9BA2AF; --line:#313643;
@@ -37,7 +38,7 @@ button{cursor:pointer}
 svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 
 /* buttons */
-.btn{white-space:nowrap;min-height:var(--tap);min-width:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:0 20px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface);font-family:var(--f-display);font-weight:600;font-size:1.02rem;font-stretch:95%;letter-spacing:.01em;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.btn{white-space:nowrap;max-width:100%;min-height:var(--tap);min-width:var(--tap);display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:0 20px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface);font-family:var(--f-display);font-weight:600;font-size:1.02rem;font-stretch:95%;letter-spacing:.01em;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .btn:active{transform:scale(.98)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.ghost{background:transparent;border-color:transparent}
@@ -48,16 +49,45 @@ svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .btn.small{min-height:48px;min-width:48px;padding:0 14px;font-size:.95rem}
 
 /* app shell */
-#app{height:var(--app-h,100%);max-height:100%;display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden}
-@media (min-width:900px){#app{grid-template-columns:clamp(290px,30vw,370px) minmax(0,1fr)}}
+#app{height:var(--app-h,100%);max-height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+@media (min-width:900px){
+  #app{grid-template-columns:var(--tabs-w) clamp(270px,27vw,350px) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+  #app[data-tab="daily"],#app[data-tab="todo"],#app[data-tab="docs"]{grid-template-columns:var(--tabs-w) minmax(0,1fr)}
+}
 @media (max-width:899px){#app.editing .rail{display:none} #app:not(.editing) .editor{display:none}}
 @media (min-width:900px){.only-narrow{display:none!important}}
+#app[data-tab="daily"] .rail,#app[data-tab="todo"] .rail,#app[data-tab="docs"] .rail{display:none}
+#app[data-tab="todo"] .editor,#app[data-tab="docs"] .editor{display:none}
+#app:not([data-tab="todo"]):not([data-tab="docs"]) .pane{display:none}
+#app[data-tab="daily"] #back{display:none}
+
+/* tabs: a row across the top that slides sideways (four in view); a column on the left edge when the screen is wide */
+.tabs{display:flex;align-items:stretch;gap:6px;min-width:0;min-height:0;background:var(--surface-2);border-bottom:1px solid var(--line);padding:8px max(8px,env(safe-area-inset-right,0px)) 8px max(8px,env(safe-area-inset-left,0px))}
+.tabs-scroll{flex:1;min-width:0;min-height:0;display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scrollbar-width:none;overscroll-behavior:contain}
+.tabs-scroll::-webkit-scrollbar{display:none}
+.tab{flex:0 0 calc((100% - 18px) / 4);min-width:0;min-height:52px;scroll-snap-align:start;border:0;border-radius:12px;padding:0 4px;background:var(--tab-bg);color:var(--tab-ink);font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:.95rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.tab[data-tab="daily"]{--tab-bg:var(--tab1);--tab-ink:var(--tab1-ink)}
+.tab[data-tab="notebooks"]{--tab-bg:var(--tab2);--tab-ink:var(--tab2-ink)}
+.tab[data-tab="meetings"]{--tab-bg:var(--tab3);--tab-ink:var(--tab3-ink)}
+.tab[data-tab="todo"]{--tab-bg:var(--tab4);--tab-ink:var(--tab4-ink)}
+.tab[data-tab="docs"]{--tab-bg:var(--surface);--tab-ink:var(--ink);border:1.5px solid var(--line)}
+.tab[aria-selected="true"]{box-shadow:inset 0 0 0 3px var(--ink),inset 0 0 0 5px var(--surface)}
+.tab:focus-visible{outline-offset:-3px}
+.tabs .btn.icon{flex:none;min-height:52px;min-width:52px;width:52px}
+@media (max-width:600px){.tab{font-size:.8rem;padding:0 2px;letter-spacing:0} .tabs .btn.icon{min-width:46px;width:46px}}
+@media (min-width:900px){
+  .tabs{flex-direction:column;border-bottom:0;border-right:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top,0px)) 8px 10px max(8px,env(safe-area-inset-left,0px))}
+  .tabs-scroll{flex-direction:column;overflow-x:hidden;overflow-y:auto;scroll-snap-type:none}
+  .tab{flex:1 1 0;min-height:60px;max-height:124px;font-size:1rem}
+  .tabs .btn.icon{width:100%;min-height:56px}
+}
+@media (max-width:899px){body.tight #app:has(.editor.composing) .tabs{display:none}}
 
 /* rail */
 .rail{display:flex;flex-direction:column;min-height:0;background:var(--surface-2);border-right:1px solid var(--line)}
 .rail-head{display:flex;flex-direction:column;gap:12px;padding-block:18px 12px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand h1{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.9rem;letter-spacing:.02em;line-height:1}
+.brand h1{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.6rem;letter-spacing:.02em;line-height:1}
 .brand small{display:block;font-family:var(--f-mono);font-size:.72rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
 .search{width:100%;min-height:52px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);padding:0 16px}
 .list{flex:1;min-height:0;overflow-y:auto;padding-block:10px 24px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
@@ -88,6 +118,7 @@ svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .ed-row{display:flex;align-items:center;gap:10px;min-width:0}
 .title{flex:1;min-width:0;min-height:var(--tap);border:1.5px solid transparent;border-radius:12px;background:transparent;padding:0 10px;font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:1.55rem;letter-spacing:.005em}
 .title:hover{border-color:var(--line)} .title:focus{border-color:var(--accent);outline:none;background:var(--surface-2)}
+.title[readonly]{border-color:transparent!important;background:transparent!important;pointer-events:none}
 .ed-meta{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;font-size:.88rem;color:var(--muted);padding-left:10px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 4px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
@@ -103,8 +134,6 @@ svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-widt
 .day span{font-family:var(--f-mono);font-size:.82rem;color:var(--muted)}
 .line{display:grid;grid-template-columns:4.6ch minmax(0,1fr);gap:4px 14px;padding:12px 8px;border-bottom:1px solid var(--line);border-radius:4px}
 .line.sel{background:var(--accent-soft);border-radius:10px;border-bottom-color:transparent}
-.line.new-since .tm::after{content:"";display:block;width:8px;height:8px;border-radius:50%;background:var(--warn);margin-top:6px}
-.line.done .tm{color:var(--ok)}
 .tm{font-family:var(--f-mono);font-size:.84rem;color:var(--muted);padding-top:6px;font-variant-numeric:tabular-nums}
 .body{min-width:0;display:flex;flex-direction:column;gap:8px}
 .ta{width:100%;max-width:72ch;border:0;background:transparent;resize:none;padding:4px 0;line-height:1.5;overflow:hidden;min-height:1.6em;font-size:1.06rem}
@@ -142,7 +171,7 @@ svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-widt
 
 /* dock */
 .dock{grid-area:dock;display:flex;gap:8px;padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--surface)}
-.tool{flex:1;min-height:76px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface-2);font-family:var(--f-display);font-weight:650;font-stretch:90%;font-size:.95rem;touch-action:manipulation;padding:6px}
+.tool{flex:1;min-height:76px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border-radius:var(--r);border:1.5px solid var(--line);background:var(--surface-2);font-family:var(--f-display);font-weight:650;font-stretch:90%;font-size:.95rem;touch-action:manipulation;padding:6px 2px;white-space:nowrap;overflow:hidden}
 .tool svg.i{width:30px;height:30px}
 .tool:active{transform:scale(.97)}
 .tool.rec{background:var(--rec);border-color:var(--rec);color:var(--surface)}
@@ -256,7 +285,7 @@ pre.raw{white-space:pre;overflow-x:auto;font-family:var(--f-mono);font-size:.78r
   .comp-row.main .btn .lbl{display:none}
   .comp-row.main .btn.primary{flex:1}
   .comp-ta{min-height:64px}
-  .tool{font-size:.8rem;min-height:70px} .dock{gap:6px}
+  .tool{font-size:.74rem;min-height:70px;letter-spacing:0} .dock{gap:5px}
 }
 body.tight .editor.composing .ed-meta,body.tight .editor.composing .chips{display:none}
 body.tight .editor.composing .comp-ta{min-height:54px;max-height:24vh}
@@ -279,30 +308,51 @@ body.tight .editor.composing .ed-head{padding-block:6px}
 .draw-actions .btn.primary{flex:1.6}
 .draw .paper{margin-bottom:10px}
 .added{font-family:var(--f-mono);font-size:.8rem;color:var(--ok);align-self:center}
+/* To-do and Docs */
+.pane{display:flex;flex-direction:column;min-height:0;min-width:0;overflow:hidden;background:var(--surface)}
+.pane-head{display:flex;flex-direction:column;gap:10px;padding-block:14px 12px;border-bottom:1px solid var(--line);min-width:0}
+.pane-head h2{margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.55rem;line-height:1.1}
+.pane-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-block:8px 28px;display:flex;flex-direction:column;gap:8px}
+.pane-body h3{margin:10px 0 0;font-family:var(--f-display);font-weight:750;font-stretch:85%;font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.todo{display:flex;align-items:flex-start;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);min-width:0}
+.todo .ck{flex:none;width:52px;height:52px;border-radius:14px;border:2px solid var(--muted);background:var(--surface);color:transparent;display:grid;place-items:center;touch-action:manipulation}
+.todo .ck svg.i{stroke-width:3}
+.todo.done .ck{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.todo .tx{flex:1;min-width:0;padding-top:12px;font-size:1.06rem;overflow-wrap:anywhere}
+.todo.done .tx{color:var(--muted);text-decoration:line-through}
+.todo .when{flex:none;font-family:var(--f-mono);font-size:.74rem;color:var(--muted);padding-top:17px;white-space:nowrap}
+.donehead{display:flex;align-items:center;gap:10px;min-height:var(--tap);margin-top:10px;padding:0 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);font-family:var(--f-display);font-weight:650;text-align:left}
+.donehead svg.i{transition:transform .15s} .donehead[aria-expanded="true"] svg.i{transform:rotate(90deg)}
+.skins{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.skin{display:flex;flex-direction:column;gap:8px;min-height:var(--tap);padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);text-align:left;font-weight:700;min-width:0}
+.skin[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+.skin .sw4{display:grid;grid-template-columns:repeat(4,1fr);height:22px;border-radius:6px;overflow:hidden}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .no-sample .needs-sample{display:none!important}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.btn:active,.tool:active{transform:none}}
 </style>
 
-<div id="app">
-  <aside class="rail" aria-label="Entries">
-    <div class="rail-head gut">
-      <div class="brand">
-        <div><h1>ATG ELN</h1><small id="countline">Bench notebook</small></div>
-        <button class="btn icon" id="openSettings" aria-label="Settings and vocabulary"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
-      </div>
-      <input class="search" id="search" type="search" placeholder="Search entries" aria-label="Search entries" autocomplete="off">
+<div id="app" data-tab="daily" class="editing">
+  <nav class="tabs" aria-label="Sections">
+    <div class="tabs-scroll" id="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="daily" aria-selected="true">Daily</button>
+      <button class="tab" role="tab" data-tab="notebooks" aria-selected="false">Notebooks</button>
+      <button class="tab" role="tab" data-tab="meetings" aria-selected="false">Meetings</button>
+      <button class="tab" role="tab" data-tab="todo" aria-selected="false">To-do</button>
+      <button class="tab" role="tab" data-tab="docs" aria-selected="false">Docs</button>
     </div>
-    <div class="list gut" id="list"><p class="note">Loading entries…</p></div>
+    <button class="btn icon" id="openSettings" aria-label="Settings and vocabulary"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+  </nav>
+  <aside class="rail" aria-label="List">
+    <div class="rail-head gut">
+      <div class="brand"><div><h1 id="railTitle">Notebooks</h1><small id="countline">ATG ELN</small></div></div>
+      <input class="search" id="search" type="search" placeholder="Search" aria-label="Search" autocomplete="off">
+    </div>
+    <div class="list gut" id="list"><p class="note">Loading…</p></div>
   </aside>
 
-  <main class="editor" id="editor">
-    <div class="blank gut" id="blank">
-      <h2>Open an entry, or start today's.</h2>
-      <p>Each entry is filled line by line: typed or dictated text, photos and handwritten notes. Ask Claude in any chat to move a day's lines to Benchling.</p>
-      <button class="btn primary" id="blankNew"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>New entry</button>
-    </div>
-  </main>
+  <main class="editor" id="editor"></main>
+  <section class="pane" id="pane"></section>
 </div>
 
 <input type="file" id="camInput" accept="image/*" capture="environment" class="vh" tabindex="-1" aria-hidden="true">
@@ -311,12 +361,12 @@ body.tight .editor.composing .ed-head{padding-block:6px}
 <template id="tpl-editor">
   <header class="ed-head gut">
     <div class="ed-row">
-      <button class="btn icon ghost only-narrow" id="back" aria-label="Back to entries"><svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <input class="title" id="title" aria-label="Entry title" placeholder="YYMMDD_Project_Line_Description" autocomplete="off" spellcheck="false">
-      <button class="btn small needs-sample" id="askBtn" aria-label="Ask Claude about this entry"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.8M12 17.2v.1"/></svg><span class="lbl">Ask</span></button>
-      <button class="btn icon ghost" id="moreBtn" aria-label="Entry options"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
+      <button class="btn icon ghost only-narrow" id="back" aria-label="Back to the list"><svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <input class="title" id="title" aria-label="Title" placeholder="YYMMDD_Project_Line_Description" autocomplete="off" spellcheck="false">
+      <button class="btn small needs-sample" id="askBtn" aria-label="Ask Claude about these notes"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2.3-2.5 3.8M12 17.2v.1"/></svg><span class="lbl">Ask</span></button>
+      <button class="btn icon ghost" id="moreBtn" aria-label="Details and options"><svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg></button>
     </div>
-    <div class="ed-meta"><span id="created" class="mono"></span><span id="xfer"></span><span id="saveState" class="save"></span></div>
+    <div class="ed-meta"><span id="created" class="mono"></span><span id="saveState" class="save"></span></div>
     <div class="hint" id="saveBanner" role="alert" hidden></div>
     <div class="chips" id="chips"></div>
   </header>
@@ -335,7 +385,7 @@ body.tight .editor.composing .ed-head{padding-block:6px}
       <button class="btn primary" id="compAdd"><svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Add line</button>
     </div>
   </section>
-  <nav class="dock gut" aria-label="Add to entry">
+  <nav class="dock gut" aria-label="Add a line">
     <button class="tool" id="tText"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Text</button>
     <button class="tool" id="tDict"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg><span id="tDictLabel">Dictate</span></button>
     <button class="tool" id="tCam"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Photo</button>
@@ -365,8 +415,57 @@ const ICON = {
   trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   read: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 20h6"/></svg>',
   undo: '<svg class="i" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
-  eraser: '<svg class="i" viewBox="0 0 24 24"><path d="M8 20h12M5.5 14.5l7-7 5 5-6.5 6.5H8z"/></svg>'
+  eraser: '<svg class="i" viewBox="0 0 24 24"><path d="M8 20h12M5.5 14.5l7-7 5 5-6.5 6.5H8z"/></svg>',
+  move: '<svg class="i" viewBox="0 0 24 24"><path d="M4 12h14M13 6l6 6-6 6"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>'
 };
+/* Where lines live. Daily is one running log (logs/daily). Notebooks and meetings are documents in "entries"; a meeting has kind "meeting". */
+const DAILY = "daily", DAILY_TITLE = "Daily", DAYS_PER_WEEK = 7, MS_PER_DAY = 864e5, SAVE_RETRY_MS = 5000;
+const TAB_IDS = ["daily", "notebooks", "meetings", "todo", "docs"];
+const KIND_OF_TAB = { notebooks: "notebook", meetings: "meeting" };
+const WORDS = {
+  notebook: { one: "notebook", many: "notebooks", title: "Notebooks", fresh: "New notebook", create: "Create notebook", untitled: "Untitled notebook",
+    blankH: "Open a notebook.", blankP: "A notebook holds the lines for one Benchling entry and is named like it. New lines start in Daily; Claude moves them here when it writes them to Benchling.",
+    empty: "No lines yet. Lines arrive here from Daily when Claude moves them to Benchling. You can also add lines here directly." },
+  meeting: { one: "meeting", many: "meetings", title: "Meetings", fresh: "New meeting", create: "Create meeting", untitled: "Untitled meeting",
+    blankH: "Open a meeting, or start one.", blankP: "Each meeting keeps its own lines. They stay here and are not sent to Benchling unless you ask.",
+    empty: "No lines yet. Use the buttons to add notes for this meeting." }
+};
+const DAILY_EMPTY = "Nothing waiting. Add lines as you work: text, dictation, photos or handwriting. They stay in Daily until Claude writes them to Benchling and moves them into the matching notebook.";
+const NO_STORE = "ATG ELN keeps your notes in your Claude account. Open it from claude.ai or the Claude app while signed in to see and add notes.";
+const kindOf = e => (e && e.kind === "meeting" ? "meeting" : "notebook");
+const pathOf = id => (id === DAILY ? "logs/daily" : "entries/" + id);
+const byAt = (a, b) => String(a.at || "").localeCompare(String(b.at || ""));
+/* Themes. "default" keeps the page's own colours and only names its tab shades; the others replace the neutrals and the accent too.
+   Strong colours are for tabs and small accents only; surfaces stay near-neutral so text keeps its contrast. */
+const SKINS = {
+  default: { name: "Default", light: { tabs: ["#33369E", "#4549D1", "#6E72DE", "#A9ACEF"] }, dark: { tabs: ["#5A5FD6", "#7479E6", "#9095FF", "#B9BCFF"] } },
+  tide: { name: "Tide",
+    light: { bg: "#EDF2F6", surface: "#FFFFFF", surface2: "#F4F7FA", ink: "#12202C", muted: "#53626F", line: "#D2DBE2", accent: "#24629B", accentInk: "#FFFFFF", accentSoft: "#DCEAF5", tabs: ["#24629B", "#3882C3", "#559BC5", "#72B4C7"] },
+    dark: { bg: "#0E151B", surface: "#151D25", surface2: "#1B252F", ink: "#E3EAF0", muted: "#97A6B3", line: "#2A3540", accent: "#72B4C7", accentInk: "#06243D", accentSoft: "#173247", tabs: ["#2F74B3", "#3882C3", "#559BC5", "#72B4C7"] } },
+  bloom: { name: "Bloom",
+    light: { bg: "#F4F1F3", surface: "#FFFFFF", surface2: "#F8F5F7", ink: "#21161F", muted: "#655A63", line: "#DDD6DC", accent: "#8A1E8A", accentInk: "#FFFFFF", accentSoft: "#F6DDF6", tabs: ["#7A1A7A", "#B030B0", "#E04FE0", "#FF5CFF"] },
+    dark: { bg: "#161015", surface: "#1E161D", surface2: "#261C24", ink: "#EFE6ED", muted: "#AC9FA9", line: "#3A2F38", accent: "#FF5CFF", accentInk: "#330033", accentSoft: "#472047", tabs: ["#8E238E", "#C03CC0", "#E85AE8", "#FF8CFF"] } },
+  saffron: { name: "Saffron",
+    light: { bg: "#F6F2E9", surface: "#FFFFFF", surface2: "#FAF7F0", ink: "#231B3A", muted: "#655E73", line: "#DDD7C8", accent: "#4B0082", accentInk: "#FFFFFF", accentSoft: "#E9DDF3", tabs: ["#B07F00", "#E3A501", "#FFB44D", "#FFDB58"] },
+    dark: { bg: "#17140E", surface: "#1F1B14", surface2: "#27221A", ink: "#F0EADB", muted: "#ADA593", line: "#37322A", accent: "#FFB44D", accentInk: "#201600", accentSoft: "#3D2F12", tabs: ["#C08C00", "#E3A501", "#FFB44D", "#FFDB58"] } },
+  meadow: { name: "Meadow",
+    light: { bg: "#EEF3EC", surface: "#FFFFFF", surface2: "#F5F8F3", ink: "#14221A", muted: "#56655B", line: "#D3DDD2", accent: "#1F7A3A", accentInk: "#FFFFFF", accentSoft: "#DDEFE0", tabs: ["#1F7A3A", "#2FA84A", "#6CCB2A", "#A0DE14"] },
+    dark: { bg: "#0E1510", surface: "#151E18", surface2: "#1B2620", ink: "#E2EDE4", muted: "#9AA99E", line: "#2B372E", accent: "#6CCB2A", accentInk: "#06260F", accentSoft: "#1D3A1A", tabs: ["#1D7437", "#2FB84F", "#6CCB2A", "#A0DE14"] } }
+};
+const SKIN_VARS = { bg: "--bg", surface: "--surface", surface2: "--surface-2", ink: "--ink", muted: "--muted", line: "--line", accent: "--accent", accentInk: "--accent-ink", accentSoft: "--accent-soft" };
+const INK_ON_LIGHT = "#101216", INK_ON_DARK = "#FFFFFF";
+const luminance = hex => { const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+const contrast = (a, b) => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+const inkOn = bg => (contrast(bg, INK_ON_DARK) >= contrast(bg, INK_ON_LIGHT) ? INK_ON_DARK : INK_ON_LIGHT);   /* tab labels take whichever reads better on their shade */
+const skinVars = v => Object.entries(SKIN_VARS).filter(([k]) => v[k]).map(([k, name]) => `${name}:${v[k]}`).concat(v.tabs.flatMap((c, i) => [`--tab${i + 1}:${c}`, `--tab${i + 1}-ink:${inkOn(c)}`])).join(";");
+function applySkin(id) {
+  const key = SKINS[id] ? id : "default", skin = SKINS[key];
+  let el = $("#skinCss"); if (!el) { el = document.createElement("style"); el.id = "skinCss"; document.body.appendChild(el); }
+  el.textContent = `html:root{${skinVars(skin.light)}}@media (prefers-color-scheme:dark){html:root{${skinVars(skin.dark)}}}`;
+  document.documentElement.dataset.skin = key;
+  try { localStorage.setItem("eln-skin", key); } catch (_) { /* storage can be blocked; the saved setting still applies once it loads */ }
+}
 const MODELS = [
   { id: "quick", label: "Quick (fastest)", opts: { modelTier: "quick" } },
   { id: "default", label: "Balanced", opts: { modelTier: "default" } },
@@ -383,7 +482,9 @@ const state = {
   db: null, assets: null, sample: null, sampleDenied: false,
   entries: new Map(), protocols: [], glossary: { terms: [] }, voice: { pairs: [] }, dictation: null,
   settings: { fixModel: "quick", askModel: "default", autoFix: true, lang: "en-US" },
-  openId: null, loaded: false, filter: "", selected: null
+  openId: null, loaded: false, filter: "", selected: null,
+  tab: "daily", openByTab: {}, dailyLoaded: false, dailyExists: false, noStore: false,
+  todo: { items: [] }, todoLoaded: false
 };
 const app = $("#app");
 
@@ -402,30 +503,51 @@ function persist(id, delay = 600) {
   clearTimeout(timers.get(id));
   timers.set(id, setTimeout(() => { timers.delete(id); flush(id); }, delay));
 }
+const retitled = new Set();  /* notebooks whose title was typed on this device and is not stored yet */
+const removed = new Map();   /* container id -> ids of lines taken out on this device, so a late snapshot can't bring them back */
+let dailyWaiting = false;    /* a Daily line was added before the stored Daily log arrived; it is saved once that is known */
+function forget(id, bid) { if (!removed.has(id)) removed.set(id, new Set()); removed.get(id).add(bid); }
+/* resolves true when the container is stored */
 async function flush(id) {
-  if (!state.db) return;
-  if (inflight.has(id) || creating.has(id)) { dirty.add(id); return; }
-  const e = state.entries.get(id); if (!e) return;
+  if (!state.db) return false;
+  if (id === DAILY && !state.dailyLoaded) { dailyWaiting = true; return false; }
+  if (inflight.has(id) || creating.has(id)) { dirty.add(id); return false; }
+  const e = state.entries.get(id); if (!e) return false;
   inflight.add(id);
   try {
-    await state.db.doc("entries/" + id).update({
-      title: e.title, protocols: e.protocols, updatedAt: e.updatedAt,
-      blocks: e.blocks.filter(b => !b.pending).map(({ pending, localUrl, ...b }) => b)
-    });
+    const ref = state.db.doc(pathOf(id));
+    /* The page can't pin a write to a version, so read what is stored right before saving and take in anything that arrived from elsewhere
+       (lines a transfer just moved into this notebook, a rename, Daily's moved list). A snapshot may not have reached this device yet. */
+    if (id !== DAILY || state.dailyExists) {
+      try { const now = await ref.get(); if (now && now.exists) takeRemote(id, now.data() || {}); } catch (_) { /* the save below reports a real connection problem */ }
+    }
+    const body = { protocols: e.protocols, updatedAt: e.updatedAt, blocks: e.blocks.filter(b => !b.pending).map(({ pending, localUrl, ...b }) => b) };
+    if (id !== DAILY) { body.title = e.title; if (e.kind) body.kind = e.kind; }
+    /* update() never touches Daily's "moved" list, which only the transfer session writes */
+    if (id === DAILY && !state.dailyExists) { await ref.set(body); state.dailyExists = true; } else await ref.update(body);
     failed.delete(id); clearTimeout(retries.get(id)); retries.delete(id);
+    if (body.title === e.title) retitled.delete(id);
     if (state.openId === id) setSave("Saved");
+    return true;
   } catch (err) {
     /* keep the local copy (busy() protects it from being overwritten) and retry until it saves */
     failed.add(id);
     if (state.openId === id) setSave("Not saved yet (" + ((err && (err.code || err.message)) || "connection problem") + "). Retrying every few seconds; keep this page open.", true);
     clearTimeout(retries.get(id));
-    retries.set(id, setTimeout(() => { retries.delete(id); flush(id); }, 5000));
+    retries.set(id, setTimeout(() => { retries.delete(id); flush(id); }, SAVE_RETRY_MS));
+    return false;
   } finally {
     inflight.delete(id);
     if (dirty.delete(id)) flush(id);
   }
 }
-const busy = id => timers.has(id) || inflight.has(id) || dirty.has(id) || creating.has(id) || failed.has(id) || (state.entries.get(id)?.blocks || []).some(b => b.pending);
+/* save now and report whether it is stored (used before a line is taken out of its old place) */
+async function saveNow(id) {
+  touch(id); clearTimeout(timers.get(id)); timers.delete(id);
+  for (let i = 0; inflight.has(id) && i < 100; i++) await new Promise(r => setTimeout(r, 50));
+  return flush(id);
+}
+const busy = id => timers.has(id) || inflight.has(id) || dirty.has(id) || creating.has(id) || failed.has(id) || (id === DAILY && dailyWaiting) || (state.entries.get(id)?.blocks || []).some(b => b.pending);
 function setSave(t, err) {
   const el = $("#saveState"); if (el) { el.textContent = err ? "Not saved" : t; el.classList.toggle("err", !!err); }
   const ban = $("#saveBanner"); if (ban) { ban.hidden = !err; ban.textContent = err ? t : ""; }
@@ -438,11 +560,24 @@ function showProblem(msg) {
 }
 window.addEventListener("error", ev => showProblem("Something went wrong: " + (ev.message || "unknown error") + ". Please tell Claude this message."));
 window.addEventListener("unhandledrejection", ev => { const r = ev.reason; showProblem("Something went wrong: " + ((r && (r.message || r.code)) || String(r)) + ". Please tell Claude this message."); });
-function normalize(raw) {
+function normalize(raw, id) {
   /* stored data arrives frozen (read-only); work on an editable copy */
   const d = JSON.parse(JSON.stringify(raw || {}));
-  return { title: d.title || "", createdAt: d.createdAt || new Date().toISOString(), updatedAt: d.updatedAt || d.createdAt || "",
-    protocols: Array.isArray(d.protocols) ? d.protocols : [], blocks: Array.isArray(d.blocks) ? d.blocks : [], lastTransfer: d.lastTransfer || null };
+  /* Daily only: ids of lines a transfer already moved into a notebook. They are never shown or saved again, whatever copy this device holds. */
+  const moved = id === DAILY && d.moved && typeof d.moved === "object" ? d.moved : {};
+  return { title: id === DAILY ? DAILY_TITLE : d.title || "", kind: id === DAILY ? "" : d.kind || "", createdAt: d.createdAt || new Date().toISOString(), updatedAt: d.updatedAt || d.createdAt || "",
+    protocols: Array.isArray(d.protocols) ? d.protocols : [], blocks: (Array.isArray(d.blocks) ? d.blocks : []).filter(b => !(b && moved[b.id])), moved,
+    benchlingUrl: d.benchlingUrl || (d.lastTransfer && d.lastTransfer.benchlingUrl) || "" };
+}
+/* Fresh stored data for one container. Normally it replaces this device's copy. While this device has unsaved changes its copy is kept,
+   but lines that were added elsewhere (a transfer session, another device) are taken in and moved lines are dropped, so the next save loses nothing. */
+function takeRemote(id, raw) {
+  const fresh = normalize(raw, id), local = state.entries.get(id);
+  if (!local || !busy(id)) { state.entries.set(id, fresh); return; }
+  const gone = removed.get(id) || new Set(), have = new Set(local.blocks.map(b => b.id));
+  local.moved = fresh.moved; local.benchlingUrl = fresh.benchlingUrl || local.benchlingUrl;
+  if (id !== DAILY) { local.kind = local.kind || fresh.kind; if (!retitled.has(id)) local.title = fresh.title; }   /* a rename made elsewhere wins unless a title was typed here */
+  local.blocks = local.blocks.filter(b => !fresh.moved[b.id]).concat(fresh.blocks.filter(b => !have.has(b.id) && !gone.has(b.id)));
 }
 
 /* ---------- boot ---------- */
@@ -455,26 +590,47 @@ async function boot() {
   app.classList.toggle("no-sample", !sample);
   if (!db) return noStore();
   state.db = db;
-  const slow = setTimeout(() => { if (!state.loaded) $("#list").innerHTML = '<p class="note">Entries are taking longer than usual to load. Check the connection; they will appear as soon as it returns.</p>'; }, 10000);
+  const slow = setTimeout(() => {
+    if (!state.loaded) $("#list").innerHTML = '<p class="note">Your notes are taking longer than usual to load. Check the connection; they will appear as soon as it returns.</p>';
+    if (!state.dailyLoaded) showProblem("Daily is taking longer than usual to load. Lines you add now are kept and saved as soon as the connection returns.");
+  }, 10000);
   db.collection("entries").onSnapshot(snap => {
-    clearTimeout(slow); state.loaded = true;
+    state.loaded = true; if (state.dailyLoaded) clearTimeout(slow);
     const seen = new Set();
-    snap.docs.forEach(d => { seen.add(d.id); if (!busy(d.id)) state.entries.set(d.id, normalize(d.data() || {})); });
-    for (const id of [...state.entries.keys()]) if (!seen.has(id) && !busy(id)) state.entries.delete(id);
+    snap.docs.forEach(d => { seen.add(d.id); takeRemote(d.id, d.data() || {}); });
+    for (const id of [...state.entries.keys()]) if (id !== DAILY && !seen.has(id) && !busy(id)) state.entries.delete(id);
     if (state.openId && !state.entries.has(state.openId)) closeEntry();
     renderRail(); if (state.openId) refreshEditor();
-  }, err => { clearTimeout(slow); $("#list").innerHTML = `<p class="note">Couldn't load entries (${esc(err.message || err.code)}). They will load when the connection returns.</p>`; });
+  }, err => { $("#list").innerHTML = `<p class="note">Couldn't load your notebooks (${esc(err.message || err.code)}). They will load when the connection returns.</p>`; });
+  db.doc("logs/daily").onSnapshot(s => {
+    const first = !state.dailyLoaded, raw = s.exists ? s.data() || {} : {};
+    state.dailyLoaded = true; state.dailyExists = state.dailyExists || !!s.exists;   /* an older "not there yet" snapshot must not make the next save replace the log */ if (state.loaded) clearTimeout(slow);
+    takeRemote(DAILY, raw);
+    const waiting = dailyWaiting; dailyWaiting = false;
+    /* a save from a stale copy can put moved lines back into the stored log; clean it once (this cannot repeat: the cleaned log has none) */
+    const stale = raw.moved && (raw.blocks || []).some(b => b && raw.moved[b.id]);
+    if (waiting || stale) persist(DAILY, 0);
+    if (state.openId === DAILY) refreshEditor(first);
+  }, err => showProblem("Couldn't load Daily (" + ((err && (err.message || err.code)) || "connection problem") + "). It will load when the connection returns."));
+  db.doc("logs/todo").onSnapshot(s => {
+    state.todoLoaded = true;
+    const d = s.exists ? s.data() || {} : {};
+    if (!todoPending && !todoProblem && !(todoWrittenAt && String(d.updatedAt || "") < todoWrittenAt)) state.todo = normalizeTodo(d);   /* not while saving, and never an echo older than our last save */
+    renderTodo();
+  }, () => {});
   db.collection("protocols").onSnapshot(snap => {
     state.protocols = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.title || "").localeCompare(b.title || ""));
     if (state.openId) renderChips();
+    renderDocs();
   }, () => {});
   db.doc("config/glossary").onSnapshot(s => { const d = s.exists ? s.data() : {}; state.glossary = { terms: [...(d.terms || [])] }; window.dispatchEvent(new Event("eln-vocab")); }, () => {});
   db.doc("config/voice").onSnapshot(s => { if (!voiceWrites) state.voice = normalizeVoice(s.exists ? s.data() : {}); }, () => {});
-  db.doc("config/settings").onSnapshot(s => { if (s.exists) Object.assign(state.settings, s.data()); }, () => {});
+  db.doc("config/settings").onSnapshot(s => { if (s.exists) { Object.assign(state.settings, s.data()); applySkin(state.settings.theme); } }, () => {});
 }
 function noStore() {
-  $("#list").innerHTML = '<p class="note">ATG ELN keeps entries in your Claude account. Open it from claude.ai or the Claude app while signed in to see and add entries.</p>';
-  $("#blankNew").disabled = true;
+  state.noStore = true;
+  $("#list").innerHTML = `<p class="note">${esc(NO_STORE)}</p>`;
+  if (state.openId) refreshEditor(); renderTodo();
 }
 
 /* ---------- rail ---------- */
@@ -483,21 +639,21 @@ function stats(e) {
   const parts = [`${n.text} line${n.text === 1 ? "" : "s"}`]; if (n.photo) parts.push(`${n.photo} photo${n.photo === 1 ? "" : "s"}`); if (n.ink) parts.push(`${n.ink} sketch${n.ink === 1 ? "" : "es"}`);
   return parts.join(" · ");
 }
-function xferChip(e) {
-  if (!e.lastTransfer || !e.lastTransfer.at) return e.blocks.length ? '<span class="chip">Not in Benchling</span>' : "";
-  const fresh = e.blocks.filter(b => b.at > e.lastTransfer.at).length;
-  return fresh ? `<span class="chip warn">${fresh} new since transfer</span>` : '<span class="chip ok">In Benchling</span>';
-}
+/* the list of notebooks or of meetings, whichever tab is showing */
 function renderRail() {
-  const list = $("#list"); const q = state.filter.trim().toLowerCase();
-  const all = [...state.entries.entries()].sort((a, b) => (a[1].createdAt || "").localeCompare(b[1].createdAt || ""));
+  const kind = KIND_OF_TAB[state.tab]; if (!kind) return;
+  const w = WORDS[kind], list = $("#list"), q = state.filter.trim().toLowerCase();
+  $("#railTitle").textContent = w.title;
+  if (state.noStore) return;
+  const all = [...state.entries.entries()].filter(([id, e]) => id !== DAILY && kindOf(e) === kind).sort((a, b) => (a[1].createdAt || "").localeCompare(b[1].createdAt || ""));
   const rows = all.filter(([, e]) => !q || e.title.toLowerCase().includes(q) || e.blocks.some(b => (b.text || "").toLowerCase().includes(q)));
-  $("#countline").textContent = state.loaded ? `${all.length} entr${all.length === 1 ? "y" : "ies"}` : "Bench notebook";
+  $("#countline").textContent = state.loaded ? `${all.length} ${all.length === 1 ? w.one : w.many}` : "ATG ELN";
+  if (!state.loaded && !all.length) { list.innerHTML = '<p class="note">Loading…</p>'; return; }
   let html = rows.map(([id, e]) => `<button class="item${id === state.openId ? " on" : ""}" data-open="${esc(id)}">
-      <span class="t">${esc(e.title || "Untitled entry")}</span>
-      <span class="m"><span class="mono">${esc(ymd(new Date(e.createdAt)))}</span><span>${esc(stats(e))}</span>${xferChip(e)}</span></button>`).join("");
-  if (!rows.length) html = q ? `<p class="note">No entries match “${esc(state.filter)}”.</p>` : '<p class="note">No entries yet. Tap New entry to start your first one.</p>';
-  if (!q) html += `<button class="btn newbtn" id="newEntry">${ICON.plus}New entry</button>`;
+      <span class="t">${esc(e.title || w.untitled)}</span>
+      <span class="m"><span class="mono">${esc(ymd(new Date(e.createdAt)))}</span><span>${esc(stats(e))}</span></span></button>`).join("");
+  if (!rows.length) html = q ? `<p class="note">No ${w.many} match “${esc(state.filter)}”.</p>` : `<p class="note">No ${w.many} yet. Tap ${w.fresh} to start one.</p>`;
+  if (!q) html += `<button class="btn newbtn" id="newEntry">${ICON.plus}${w.fresh}</button>`;
   const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
   const first = !list.dataset.ready;
   list.innerHTML = html;
@@ -505,9 +661,29 @@ function renderRail() {
 }
 
 /* ---------- entry lifecycle ---------- */
-/* New entry: a form first. Nothing is saved until Create entry is tapped, so Back discards it. */
+/* ---------- tabs ---------- */
+const isWide = () => window.matchMedia("(min-width:900px)").matches;
+function setTab(tab) {
+  if (!TAB_IDS.includes(tab)) return;
+  stopDictation(true);
+  if (KIND_OF_TAB[state.tab] && state.openId) state.openByTab[state.tab] = state.openId;
+  state.tab = tab; state.filter = ""; app.dataset.tab = tab;
+  document.querySelectorAll("#tabs .tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  $("#search").value = ""; delete $("#list").dataset.ready; $("#pane").innerHTML = "";
+  if (tab === DAILY) return openEntry(DAILY);
+  const kind = KIND_OF_TAB[tab];
+  if (!kind) { closeEntry(); renderTodo(); renderDocs(); return; }
+  const w = WORDS[kind]; $("#search").placeholder = "Search " + w.many; $("#search").setAttribute("aria-label", "Search " + w.many);
+  /* with room for both, the list sits beside the one last open; otherwise the list comes first and a tap opens one */
+  const last = state.openByTab[tab], e = state.entries.get(last);
+  if (isWide() && e && kindOf(e) === kind) openEntry(last); else closeEntry();
+}
+/* New notebook or meeting: a form first. Nothing is saved until Create is tapped, so Back discards it. */
 function newEntry() {
   if (!state.db) return;
+  const kind = KIND_OF_TAB[state.tab]; if (!kind) return;
+  const w = WORDS[kind];
+  stashDraft();
   stopDictation(true);
   state.openId = null; state.again = null;
   const picked = new Set();
@@ -515,13 +691,13 @@ function newEntry() {
   const ed = $("#editor");
   ed.classList.remove("composing");
   ed.innerHTML = `<header class="ed-head gut"><div class="ed-row">
-      <button class="btn icon ghost only-narrow" id="newBack" aria-label="Back to entries without creating">${'<svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>'}</button>
-      <h2 style="margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.5rem">New entry</h2></div></header>
+      <button class="btn icon ghost only-narrow" id="newBack" aria-label="Back without creating">${'<svg class="i" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>'}</button>
+      <h2 style="margin:0;font-family:var(--f-display);font-weight:800;font-stretch:80%;font-size:1.5rem">${w.fresh}</h2></div></header>
     <form class="create gut" id="newForm" autocomplete="off">
       <label for="newTitle">Title</label>
       <input class="title" id="newTitle" value="${esc(yymmdd(new Date()) + "_")}" spellcheck="false" enterkeyhint="done">
-      <span class="help">YYMMDD_Project_Line_Description</span>
-      <button class="btn primary" type="submit" id="newCreate">${ICON.plus}Create entry</button>
+      <span class="help">${kind === "meeting" ? "YYMMDD_Who or what the meeting is about" : "Name it like the Benchling entry: YYMMDD_Project_Line_Type"}</span>
+      <button class="btn primary" type="submit" id="newCreate">${ICON.plus}${w.create}</button>
       <button class="btn" type="button" id="newCancel">Cancel</button>
       ${state.protocols.length ? `<h3 style="margin:10px 0 0;font-family:var(--f-display);font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">Link protocols (optional)</h3>` +
         Object.entries(groups).map(([g, ps]) => `<div class="pgroup"><span class="help" style="margin:0">${esc(g)}</span>${ps.map(p => `<button type="button" class="prow" data-pid="${esc(p.id)}" aria-pressed="false"><span class="ck">${ICON.check}</span><span class="nm">${esc(p.title)}</span></button>`).join("")}</div>`).join("") : ""}
@@ -539,30 +715,39 @@ function newEntry() {
     ev.preventDefault();
     const btn = $("#newCreate"); if (btn.disabled) return; btn.disabled = true;
     const id = uid(), now = new Date().toISOString();
-    const e = { title: t.value.trim() || yymmdd(new Date()) + "_", createdAt: now, updatedAt: now, protocols: [...picked], blocks: [], lastTransfer: null };
-    state.entries.set(id, e); creating.add(id);
+    const doc = { title: t.value.trim() || yymmdd(new Date()) + "_", createdAt: now, updatedAt: now, protocols: [...picked], blocks: [], ...(kind === "meeting" ? { kind } : {}) };
+    state.entries.set(id, normalize(doc, id)); creating.add(id);
     try {
-      await state.db.doc("entries/" + id).set(e);
-      creating.delete(id); openEntry(id); setSave("Saved");
+      await state.db.doc(pathOf(id)).set(doc);
+      creating.delete(id);
+      if (KIND_OF_TAB[state.tab] === kind) { openEntry(id); setSave("Saved"); } else renderRail();   /* he may have switched tabs while it was being created */
       if (dirty.delete(id)) flush(id);
     } catch (err) {
       creating.delete(id); state.entries.delete(id); btn.disabled = false;
-      toast("Couldn't create the entry: " + (err.message || err.code));
+      toast(`Couldn't create the ${w.one}: ` + (err.message || err.code));
     }
   });
 }
+/* text typed or dictated in the box but not yet added is kept per place, so switching tabs or notebooks doesn't lose it */
+const drafts = new Map();
+function stashDraft() { const ta = $("#compTa"); if (ta && state.openId) { if (ta.value.trim()) drafts.set(state.openId, ta.value); else drafts.delete(state.openId); } }
 function openEntry(id) {
+  stashDraft();
   if (state.openId !== id) { stopDictation(true); state.again = null; }
   state.openId = id; state.selected = null;
+  if (KIND_OF_TAB[state.tab]) state.openByTab[state.tab] = id;
   const ed = $("#editor"); ed.innerHTML = ""; ed.classList.remove("composing"); ed.appendChild($("#tpl-editor").content.cloneNode(true));
   app.classList.add("editing");
   wireEditor(); refreshEditor(true); renderRail(); keepAwake();
+  if (drafts.has(id)) { openComposer(false); $("#compTa").value = drafts.get(id); }
 }
 function closeEntry() {
+  stashDraft();
   stopDictation(true);
   state.openId = null; state.again = null; app.classList.remove("editing");
   const ed = $("#editor"); ed.classList.remove("composing");
-  ed.innerHTML = `<div class="blank gut"><h2>Open an entry, or start today's.</h2><p>Each entry is filled line by line: typed or dictated text, photos and handwritten notes. Ask Claude in any chat to move a day's lines to Benchling.</p><button class="btn primary" id="blankNew">${ICON.plus}New entry</button></div>`;
+  const w = WORDS[KIND_OF_TAB[state.tab]];
+  ed.innerHTML = w ? `<div class="blank gut"><h2>${w.blankH}</h2><p>${w.blankP}</p><button class="btn primary" id="blankNew"${state.db ? "" : " disabled"}>${ICON.plus}${w.fresh}</button></div>` : "";
   renderRail();
 }
 const cur = () => state.entries.get(state.openId);
@@ -570,36 +755,44 @@ const cur = () => state.entries.get(state.openId);
 /* ---------- editor rendering ---------- */
 function refreshEditor(first) {
   const e = cur(); if (!e) return;
-  const t = $("#title"); if (t && document.activeElement !== t && t.value !== e.title) t.value = e.title;
-  $("#created").textContent = "Started " + nice(e.createdAt);
-  $("#xfer").innerHTML = xferChip(e) + (e.lastTransfer?.benchlingUrl ? ` <a href="${esc(e.lastTransfer.benchlingUrl)}" target="_blank" rel="noopener">Open in Benchling</a>` : "");
+  const daily = state.openId === DAILY;
+  const t = $("#title"); if (t) { t.readOnly = daily; if (document.activeElement !== t && t.value !== e.title) t.value = e.title; }
+  const firstAt = e.blocks.reduce((m, b) => (!m || String(b.at) < m ? String(b.at) : m), "");
+  $("#created").textContent = daily ? (firstAt ? "Since " + nice(firstAt) : "") : "Started " + nice(firstAt || e.createdAt);
   if (first) setSave(e.blocks.length ? "Saved" : "");
   renderChips(); renderLines(first);
   const cam = !state.assets;
-  ["#tCam", "#tLib", "#tDraw"].forEach(s => { const b = $(s); if (b) b.disabled = cam; });
+  ["#tCam", "#tLib", "#tDraw"].forEach(s => { const b = $(s); if (b) b.disabled = cam || state.noStore; });
+  ["#tText", "#tDict"].forEach(s => { const b = $(s); if (b) b.disabled = state.noStore; });
+  if (state.noStore) setSave(NO_STORE, true);
 }
 function renderChips() {
   const e = cur(), box = $("#chips"); if (!e || !box) return;
   box.innerHTML = e.protocols.map(pid => { const p = state.protocols.find(x => x.id === pid); return `<button class="pchip" data-proto="${esc(pid)}">${ICON.book}${esc(p ? p.title : pid)}</button>`; }).join("")
     + `<button class="pchip add" id="linkProto">${ICON.plus}${e.protocols.length ? "Protocols" : "Link a protocol"}</button>`;
 }
-function dayKeys(e) {
-  const days = []; e.blocks.forEach(b => { const k = ymd(new Date(b.at)); if (!days.includes(k)) days.push(k); }); return days;
+/* Header for a day that has lines. Daily counts the days in the log (Day 1, Day 2…). A notebook or meeting counts time since its first line,
+   in days and weeks only: Day 1–Day 7, then "Week 1, Day 1" on the 8th day, "Week 2, Day 2" fifteen days after the first. */
+function dayLabel(id, days, k) {
+  if (id === DAILY) return "Day " + (days.indexOf(k) + 1);
+  const n = Math.round((new Date(k + "T12:00") - new Date(days[0] + "T12:00")) / MS_PER_DAY);
+  return n < DAYS_PER_WEEK ? "Day " + (n + 1) : `Week ${Math.floor(n / DAYS_PER_WEEK)}, Day ${n % DAYS_PER_WEEK + 1}`;
 }
 function renderLines(scrollEnd) {
   const e = cur(), box = $("#lines"); if (!e || !box) return;
-  if (!e.blocks.length) { box.innerHTML = '<p class="note" style="padding-top:24px">No lines yet. Use the buttons to add text, a photo or a handwritten note. Each line is timestamped and grouped by day, like Benchling’s Day sections.</p>'; return; }
+  if (!e.blocks.length) { box.innerHTML = `<p class="note" style="padding-top:24px">${state.openId === DAILY ? DAILY_EMPTY : WORDS[kindOf(e)].empty}</p>`; return; }
   const empty = box.querySelector(":scope > .note"); if (empty) empty.remove();
-  const days = dayKeys(e);
+  const blocks = [...e.blocks].sort(byAt);   /* shown in time order, so lines moved in from elsewhere fall under the right day */
+  const days = [...new Set(blocks.map(b => ymd(new Date(b.at))))];
   const want = [];
   let lastDay = null;
-  e.blocks.forEach(b => { const k = ymd(new Date(b.at)); if (k !== lastDay) { want.push({ key: "d:" + k, day: k, n: days.indexOf(k) + 1 }); lastDay = k; } want.push({ key: "b:" + b.id, b }); });
+  blocks.forEach(b => { const k = ymd(new Date(b.at)); if (k !== lastDay) { want.push({ key: "d:" + k, day: k, label: dayLabel(state.openId, days, k) }); lastDay = k; } want.push({ key: "b:" + b.id, b }); });
   const existing = new Map([...box.children].map(n => [n.dataset.key, n]));
   want.forEach((w, i) => {
     let node = existing.get(w.key);
     if (!node) { node = w.b ? makeLine(w.b) : document.createElement("div"); node.dataset.key = w.key; }
     existing.delete(w.key);
-    if (w.b) updateLine(node, w.b, e); else { node.className = "day"; node.innerHTML = `<b>Day ${w.n}</b><span>${esc(w.day)} · ${esc(WD[new Date(w.day + "T12:00").getDay()])}</span>`; }
+    if (w.b) updateLine(node, w.b); else { node.className = "day"; node.innerHTML = `<b>${w.label}</b><span>${esc(w.day)} · ${esc(WD[new Date(w.day + "T12:00").getDay()])}</span>`; }
     if (box.children[i] !== node) box.insertBefore(node, box.children[i] || null);
   });
   existing.forEach(n => n.remove());
@@ -628,14 +821,13 @@ function makeLine(b) {
   else body = `<img class="shot${b.type === "ink" ? " ink" : ""}" alt="${b.type === "ink" ? "Handwritten note" : "Photo"}"><div class="trans" hidden></div><textarea class="ta cap" rows="1" data-field="caption" placeholder="Caption (optional)" aria-label="Caption"></textarea>`;
   const acts = (b.type === "text" ? `<button class="btn small needs-sample" data-act="fix">${ICON.fix}Fix terms</button>` : "")
     + (b.type === "ink" ? `<button class="btn small needs-sample" data-act="transcribe">${ICON.read}Read handwriting</button>` : "")
+    + (state.openId === DAILY ? "" : `<button class="btn small" data-act="move">${ICON.move}Move or copy</button>`)
     + `<button class="btn small danger" data-act="del">${ICON.trash}Delete</button>`;
   n.innerHTML = `<div class="tm"></div><div class="body">${body}<div class="fixnote" hidden></div><div class="acts">${acts}</div></div>`;
   return n;
 }
-function updateLine(n, b, e) {
+function updateLine(n, b) {
   n.querySelector(".tm").textContent = hm(b.at);
-  const lt = e.lastTransfer?.at;
-  n.classList.toggle("done", !!lt && b.at <= lt); n.classList.toggle("new-since", !!lt && b.at > lt);
   n.classList.toggle("sel", state.selected === b.id);
   const ta = n.querySelector("textarea.ta"); const field = ta?.dataset.field;
   if (ta && document.activeElement !== ta) { const v = (field === "text" ? b.text : b.caption) || ""; if (ta.value !== v) ta.value = v; }
@@ -643,12 +835,18 @@ function updateLine(n, b, e) {
   if (img) { const src = b.localUrl || b.url || (b.assetId ? "/_blob/" + b.assetId : ""); if (src && img.getAttribute("src") !== src) img.src = src; img.classList.toggle("pending", !!b.pending); }
   const tr = n.querySelector(".trans"); if (tr) { tr.hidden = !b.transcript; tr.textContent = b.transcript || ""; }
 }
-function grow(ta) { ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px"; }
+/* Measuring a text box means collapsing it for a moment. Safari on iPad has no scroll anchoring, so that shortened the list and pulled it up
+   on every keystroke and every save; put the list back where it was. */
+function grow(ta) {
+  const box = ta.closest(".lines"), top = box ? box.scrollTop : 0;
+  ta.style.height = "auto"; ta.style.height = ta.scrollHeight + "px";
+  if (box && box.scrollTop !== top) box.scrollTop = top;
+}
 
 /* ---------- editor wiring ---------- */
 function wireEditor() {
   $("#back").onclick = closeEntry;
-  $("#title").addEventListener("input", ev => { const e = cur(); if (!e) return; e.title = ev.target.value; persist(state.openId); renderRail(); });
+  $("#title").addEventListener("input", ev => { const e = cur(); if (!e || state.openId === DAILY) return; e.title = ev.target.value; retitled.add(state.openId); persist(state.openId); renderRail(); });
   $("#chips").addEventListener("click", ev => {
     const c = ev.target.closest("[data-proto]"); if (c) return showProtocol(c.dataset.proto);
     if (ev.target.closest("#linkProto")) pickProtocols();
@@ -667,6 +865,7 @@ function wireEditor() {
     if (btn.dataset.act === "del") return armDelete(btn, () => deleteBlock(b));
     if (btn.dataset.act === "fix") return fixLine(b, line);
     if (btn.dataset.act === "transcribe") return transcribe(b, btn);
+    if (btn.dataset.act === "move") return pickDestination(b);
   });
   $("#tText").onclick = () => openComposer(true);
   $("#tDict").onclick = () => dict.on ? stopDictation() : startDictation();
@@ -702,13 +901,55 @@ function armDelete(btn, fn) {
   btn.classList.add("armed"); const label = btn.innerHTML; btn.innerHTML = ICON.trash + "Tap again to delete";
   setTimeout(() => { if (btn.isConnected) { btn.classList.remove("armed"); btn.innerHTML = label; } }, 3500);
 }
+/* a copied line shares its image with the original, so an image is deleted only with its last line */
+const assetInUse = (assetId, exceptEntry) => [...state.entries.entries()].some(([id, e]) => id !== exceptEntry && e.blocks.some(x => x.assetId === assetId));
 function deleteBlock(b) {
-  const e = cur(); e.blocks = e.blocks.filter(x => x.id !== b.id);
-  if (b.assetId && state.assets) state.assets.delete(b.assetId).catch(() => {});
+  const e = cur(); e.blocks = e.blocks.filter(x => x.id !== b.id); forget(state.openId, b.id);
+  if (b.assetId && state.assets && !e.blocks.some(x => x.assetId === b.assetId) && !assetInUse(b.assetId, state.openId)) state.assets.delete(b.assetId).catch(() => {});
   persist(state.openId, 0); renderLines(); renderRail();
 }
+/* ---------- move or copy a line to another notebook (notebooks and meetings only; Daily's lines leave through a transfer) ---------- */
+function pickDestination(b) {
+  const from = state.openId; if (!cur() || from === DAILY) return;
+  if (b.pending) { toast("Wait for the image to finish uploading."); return; }
+  const rows = kind => [...state.entries.entries()].filter(([id, e]) => id !== DAILY && id !== from && kindOf(e) === kind)
+    .sort((x, y) => (x[1].title || "").localeCompare(y[1].title || ""))
+    .map(([id, e]) => `<button class="prow" data-dest="${esc(id)}"><span class="nm">${esc(e.title || WORDS[kind].untitled)}</span>${ICON.move}</button>`).join("");
+  const books = rows("notebook"), meets = rows("meeting");
+  const body = `<button class="toggle" id="keepCopy" role="switch" aria-checked="false"><span>Keep a copy here</span><span class="sw"></span></button>
+    <p class="note" style="padding:0">Tap where this line should go. It keeps its time and wording.</p>
+    ${books ? `<h3>Notebooks</h3><div class="pgroup">${books}</div>` : ""}${meets ? `<h3>Meetings</h3><div class="pgroup">${meets}</div>` : ""}
+    ${books || meets ? "" : '<p class="note" style="padding:0">There is nowhere else to move it yet. Create another notebook first.</p>'}`;
+  const s = sheet("Move or copy line", body);
+  const keep = s.body.querySelector("#keepCopy");
+  keep.onclick = () => keep.setAttribute("aria-checked", String(keep.getAttribute("aria-checked") !== "true"));
+  s.body.addEventListener("click", ev => {
+    const d = ev.target.closest("[data-dest]"); if (!d) return;
+    const copy = keep.getAttribute("aria-checked") === "true"; s.close(); moveLine(from, b.id, d.dataset.dest, copy);
+  });
+}
+/* The destination is saved first. Only when that is stored does the line leave its old place, so a failed save can't lose it. */
+async function moveLine(from, bid, to, keepCopy) {
+  const src = state.entries.get(from), dst = state.entries.get(to), b = src && src.blocks.find(x => x.id === bid);
+  if (!src || !dst || !b) { showProblem("That line or notebook is no longer there, so nothing was moved."); return; }
+  const { pending, localUrl, ...plain } = b;
+  const copy = { ...JSON.parse(JSON.stringify(plain)), id: keepCopy ? uid() : b.id };
+  dst.blocks = [...dst.blocks.filter(x => x.id !== copy.id), copy];
+  const stored = await saveNow(to);
+  if (!stored) {
+    const d = state.entries.get(to); if (d) d.blocks = d.blocks.filter(x => x.id !== copy.id);
+    showProblem(`Couldn't save to “${dst.title}”, so the line stays where it was. Check the connection and try again.`); return;
+  }
+  if (!keepCopy) {
+    const live = state.entries.get(from);
+    if (live) { live.blocks = live.blocks.filter(x => x.id !== bid); forget(from, bid); persist(from, 0); }
+    if (state.selected === bid) state.selected = null;
+  }
+  if (state.openId === from) renderLines(); renderRail();
+  toast(`${keepCopy ? "Copied" : "Moved"} to “${dst.title || "Untitled"}”.`);
+}
 function addBlock(b) {
-  const e = cur(); if (!e) { showProblem("No entry is open, so the line wasn't added."); return; }
+  const e = cur(); if (!e) { showProblem("Nothing is open to add the line to, so it wasn't added."); return; }
   e.blocks.push(b); state.selected = null;
   if (!b.pending) persist(state.openId, 0);   /* save first, so a display problem can never lose the line */
   try {
@@ -1236,7 +1477,7 @@ function showProtocol(pid) {
   if (!p) { toast("That protocol is no longer in the library."); return; }
   const linked = e && e.protocols.includes(pid);
   const body = `<dl class="meta-grid"><dt>Folder</dt><dd>${esc(p.category || "")}</dd><dt>Benchling</dt><dd class="mono">${esc(p.benchlingId || "—")}</dd></dl>
-    ${e ? `<button class="btn${linked ? "" : " primary"}" id="pLink">${linked ? "Unlink from this entry" : "Link to this entry"}</button>` : ""}
+    ${e ? `<button class="btn${linked ? "" : " primary"}" id="pLink">${linked ? "Unlink from these notes" : "Link to these notes"}</button>` : ""}
     <div class="doc">${/kampmann/.test(pid) ? `<pre class="raw">${esc(p.text)}</pre>` : mdLite(p.text || "")}</div>`;
   const s = sheet(p.title, body);
   const b = s.body.querySelector("#pLink");
@@ -1314,8 +1555,8 @@ ${e.protocols.length ? "PROTOCOLS LINKED TO THIS ENTRY (full text):" + protoText
 OTHER PROTOCOLS IN THE LIBRARY (id: title), readable with read_protocol:
 ${unlinked.map(p => `${p.id}: ${p.title}`).join("\n") || "(none)"}
 
-OTHER ENTRIES (id: title), newest first, readable with read_entry:
-${others.map(([x, o]) => `${x}: ${o.title}`).join("\n") || "(none)"}`;
+OTHER ENTRIES (id: title), newest first, readable with read_entry. "daily" is the running log of lines not yet filed into a notebook:
+${others.map(([x, o]) => `${x}: ${o.title}${x !== DAILY && kindOf(o) === "meeting" ? " (meeting)" : ""}`).join("\n") || "(none)"}`;
 }
 function askTools(note) {
   const str = (v, max = 200) => String(v ?? "").trim().slice(0, max);
@@ -1386,7 +1627,7 @@ async function askSend(id) {
 function openAsk() {
   const id = state.openId, e = cur(); if (!e || !state.sample) return;
   const body = `<div class="ask-log" id="askLog" aria-live="polite"></div>
-    <div class="ask-comp"><textarea class="box" id="askQ" rows="2" placeholder="Ask about this entry, or answer Claude's question" aria-label="Message to Claude"></textarea>
+    <div class="ask-comp"><textarea class="box" id="askQ" rows="2" placeholder="Ask about these notes, or answer Claude's question" aria-label="Message to Claude"></textarea>
       <div class="comp-row"><select class="sel" id="askModel" aria-label="Model">${MODELS.map(m => `<option value="${m.id}"${m.id === state.settings.askModel ? " selected" : ""}>${esc(m.label)}</option>`).join("")}</select>
         <span class="grow"></span>
         <button class="btn" id="askStop" hidden>Stop</button><button class="btn primary" id="askGo">Send</button></div></div>`;
@@ -1396,7 +1637,7 @@ function openAsk() {
   const q = $s("#askQ"), log = $s("#askLog"), go = $s("#askGo"), stop = $s("#askStop");
   const render = () => {
     const t = askThread(id), stick = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
-    log.innerHTML = (t.turns.length || t.live ? "" : `<p class="note" style="padding:0">Claude sees this whole entry and its linked protocols${e.protocols.length ? "" : " (none linked yet)"}, and can look up your other protocols and entries. It asks you when something it needs isn't in the notebook; tap an answer or type one. Photos and handwriting are ${state.settings.askPhotos ? "sent too" : "not sent (switch in Settings)"}. The chat stays here while you go back to the entry.</p>`)
+    log.innerHTML = (t.turns.length || t.live ? "" : `<p class="note" style="padding:0">Claude sees all the lines here and the linked protocols${e.protocols.length ? "" : " (none linked yet)"}, and can look up your other protocols, notebooks and meetings. It asks you when something it needs isn't in the notebook; tap an answer or type one. Photos and handwriting are ${state.settings.askPhotos ? "sent too" : "not sent (switch in Settings)"}. Each place (Daily, a notebook, a meeting) has its own chat, and it stays here while you go back to your notes.</p>`)
       + t.turns.map((m, i) => m.role === "user" ? `<div class="msg user">${esc(m.content)}</div>`
         : `<div class="msg claude"><div class="doc">${askBody(m.content, i === t.turns.length - 1 && !t.live ? t.picks : null)}</div><div class="comp-row" style="margin-top:8px"><span class="byline">${m.by ? "Answered by " + esc(m.by) : ""}</span><span class="grow"></span><button class="btn small" data-add="${i}">${ICON.plus}Add as line</button></div></div>`).join("")
       + (t.live ? `<div class="msg claude live"><div class="doc">${t.live.text ? mdLite(t.live.text) : `<p class="byline">${esc(t.live.note || "Thinking…")}</p>`}</div></div>` : "")
@@ -1433,27 +1674,99 @@ function openAsk() {
     const opt = ev.target.closest("[data-opt]"); if (opt) { pick(opt); return; }
     const add = ev.target.closest("[data-add]"); if (!add) return;
     const m = askThread(id).turns[Number(add.dataset.add)]; if (!m) return;
-    addBlock({ id: uid(), type: "text", text: "Claude: " + m.content.trim(), at: new Date().toISOString() }); toast("Added to the entry.");
+    addBlock({ id: uid(), type: "text", text: "Claude: " + m.content.trim(), at: new Date().toISOString() }); toast("Added as a line.");
   });
 }
 function openMore() {
   const e = cur(); if (!e) return;
-  const body = `<dl class="meta-grid"><dt>Started</dt><dd>${esc(nice(e.createdAt))}</dd><dt>Last change</dt><dd>${esc(e.updatedAt ? nice(e.updatedAt) + " " + hm(e.updatedAt) : "—")}</dd><dt>Benchling</dt><dd>${e.lastTransfer?.at ? "Transferred " + esc(nice(e.lastTransfer.at) + " " + hm(e.lastTransfer.at)) : "Not transferred yet"}</dd></dl>
-    <p class="note" style="padding:0">To move this entry, say in any Claude chat: “Transfer today’s ATG ELN notes to Benchling.” Claude marks the lines it moved; lines added later get an amber dot.</p>
+  const id = state.openId, daily = id === DAILY, kind = kindOf(e), w = WORDS[kind], other = kind === "meeting" ? "notebook" : "meeting";
+  const about = daily ? "Lines stay in Daily until Claude has written them to Benchling; it then moves them, unchanged, into the notebook named like the Benchling entry. In a Claude Code session opened in this project's folder, say “Transfer my ATG ELN notes to Benchling.”"
+    : kind === "meeting" ? "Meeting lines stay here. They are not sent to Benchling or moved to a notebook unless you ask Claude to."
+    : "This notebook mirrors one Benchling entry, so keep its name the same as the entry's. Lines arrive from Daily after a transfer; select a line to edit it, or to move or copy it to another notebook.";
+  const body = `<dl class="meta-grid"><dt>Lines</dt><dd>${esc(stats(e))}</dd><dt>Last change</dt><dd>${esc(e.updatedAt ? nice(e.updatedAt) + " " + hm(e.updatedAt) : "—")}</dd>${/^https:\/\//.test(e.benchlingUrl) ? `<dt>Benchling</dt><dd><a href="${esc(e.benchlingUrl)}" target="_blank" rel="noopener">Open the entry</a></dd>` : ""}</dl>
+    <p class="note" style="padding:0">${about}</p>
     <h3 class="needs-sample">Lab terms</h3>
     <div class="field needs-sample"><button class="btn" id="fixAll">${ICON.fix}Fix terms in every line</button>
       <button class="btn" id="fixUndo" hidden>${ICON.undo}Undo all</button>
       <span class="help">Checks each text line against your vocabulary, the way the Fix terms button does for one line.</span></div>
-    <h3>Delete</h3><button class="btn danger" id="delEntry">${ICON.trash}Delete this entry</button>`;
-  const s = sheet("Entry details", body);
+    ${daily ? "" : `<h3>Keep it in</h3><button class="btn" id="swapKind">${ICON.move}Move to ${WORDS[other].title}</button>
+    <h3>Delete</h3><button class="btn danger" id="delEntry">${ICON.trash}Delete this ${w.one}</button>`}`;
+  const s = sheet(daily ? "Daily" : w.one[0].toUpperCase() + w.one.slice(1) + " details", body);
   const fa = s.body.querySelector("#fixAll"); if (fa) fa.onclick = () => fixAllLines(fa);
+  if (daily) return;
+  s.body.querySelector("#swapKind").onclick = () => {
+    const live = state.entries.get(id); if (!live) return;
+    live.kind = other; persist(id, 0); s.close(); delete state.openByTab[state.tab]; closeEntry();
+    toast(`Moved to ${WORDS[other].title}.`);
+  };
   s.body.querySelector("#delEntry").onclick = ev => armDelete(ev.currentTarget, async () => {
-    const id = state.openId; s.close();
-    const assetIds = e.blocks.map(b => b.assetId).filter(Boolean);
-    state.entries.delete(id); closeEntry();
-    try { await state.db.doc("entries/" + id).delete(); if (state.assets) assetIds.forEach(a => state.assets.delete(a).catch(() => {})); toast("Entry deleted."); }
-    catch (err) { toast("Couldn't delete the entry: " + (err.message || err.code)); }
+    s.close();
+    const assetIds = [...new Set(e.blocks.map(b => b.assetId).filter(Boolean))].filter(a => !assetInUse(a, id));
+    state.entries.delete(id); delete state.openByTab[state.tab]; closeEntry();
+    try { await state.db.doc(pathOf(id)).delete(); if (state.assets) assetIds.forEach(a => state.assets.delete(a).catch(() => {})); toast(`Deleted the ${w.one}.`); }
+    catch (err) { toast(`Couldn't delete the ${w.one}: ` + (err.message || err.code)); }
   });
+}
+/* ---------- To-do: one plain list (logs/todo). Done items move to a folded section at the end, in the order they were ticked. ---------- */
+let todoOpen = false, todoPending = 0, todoProblem = "", todoQueue = Promise.resolve(), todoRetry = 0, todoWrittenAt = "";
+function normalizeTodo(raw) {
+  const d = JSON.parse(JSON.stringify(raw || {}));   /* stored data is frozen; work on a copy */
+  return { items: (Array.isArray(d.items) ? d.items : []).filter(i => i && i.id && typeof i.text === "string") };
+}
+const todoStamp = iso => { const d = new Date(iso); return `${d.getDate()} ${MO[d.getMonth()]} ${hm(iso)}`; };
+/* one write at a time, always of the newest list; a failed write is shown and retried, like lines are */
+function saveTodo(items) {
+  state.todo = { items }; renderTodo();
+  if (!state.db) return;
+  todoPending++;
+  todoQueue = todoQueue.then(async () => {
+    try { const at = new Date().toISOString(); await state.db.doc("logs/todo").set({ items: state.todo.items, updatedAt: at }); todoWrittenAt = at; todoProblem = ""; clearTimeout(todoRetry); }
+    catch (err) {
+      todoProblem = "Not saved yet (" + ((err && (err.code || err.message)) || "connection problem") + "). Retrying every few seconds; keep this page open.";
+      clearTimeout(todoRetry); todoRetry = setTimeout(() => saveTodo(state.todo.items), SAVE_RETRY_MS);
+    } finally { todoPending--; renderTodo(); }
+  });
+}
+function todoRow(i) {
+  return `<div class="todo${i.doneAt ? " done" : ""}" data-todo="${esc(i.id)}"><button class="ck" role="checkbox" aria-checked="${!!i.doneAt}" aria-label="${i.doneAt ? "Done" : "Not done"}: ${esc(i.text)}">${ICON.check}</button>
+    <span class="tx">${esc(i.text)}</span><span class="when">${esc(todoStamp(i.doneAt || i.at))}</span>${i.doneAt ? `<button class="btn small ghost" data-tdel aria-label="Delete ${esc(i.text)}">${ICON.trash}</button>` : ""}</div>`;
+}
+function renderTodo() {
+  if (state.tab !== "todo") return;
+  const pane = $("#pane");
+  if (!$("#todoForm")) pane.innerHTML = `<header class="pane-head gut"><h2>To-do</h2><div class="hint" id="todoBanner" role="alert" hidden></div>
+      <form class="vadd" id="todoForm" autocomplete="off"><input id="todoNew" placeholder="Add something to do" aria-label="New to-do" enterkeyhint="done"><button class="btn primary" type="submit">${ICON.plus}Add</button></form></header>
+    <div class="pane-body gut" id="todoList"></div>`;
+  const problem = state.noStore ? NO_STORE : todoProblem, ban = $("#todoBanner"); ban.hidden = !problem; ban.textContent = problem;
+  const active = state.todo.items.filter(i => !i.doneAt).sort(byAt);
+  const done = state.todo.items.filter(i => i.doneAt).sort((a, b) => String(a.doneAt).localeCompare(String(b.doneAt)));
+  $("#todoList").innerHTML = (active.length ? active.map(todoRow).join("") : `<p class="note">${state.todoLoaded || state.noStore ? (done.length ? "Nothing left to do." : "Nothing here yet. Add the first thing above.") : "Loading…"}</p>`)
+    + (done.length ? `<button class="donehead" id="doneHead" aria-expanded="${todoOpen}">${ICON.chev}Done (${done.length})</button>` + (todoOpen ? done.map(todoRow).join("") : "") : "");
+}
+function onPaneSubmit(ev) {
+  if (ev.target.id !== "todoForm") return;
+  ev.preventDefault();
+  const input = $("#todoNew"), text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  if (!state.todoLoaded) { toast(state.noStore ? NO_STORE : "Your list is still loading. Try again in a moment."); return; }
+  input.value = ""; input.focus();
+  saveTodo([...state.todo.items, { id: uid(), text, at: new Date().toISOString(), doneAt: null }]);
+}
+function onPaneClick(ev) {
+  const doc = ev.target.closest("[data-doc]"); if (doc) return showProtocol(doc.dataset.doc);
+  if (ev.target.closest("#doneHead")) { todoOpen = !todoOpen; return renderTodo(); }
+  const row = ev.target.closest("[data-todo]"); if (!row || !state.todoLoaded) return;
+  const id = row.dataset.todo, del = ev.target.closest("[data-tdel]");
+  if (del) return armDelete(del, () => saveTodo(state.todo.items.filter(i => i.id !== id)));
+  if (ev.target.closest(".ck")) saveTodo(state.todo.items.map(i => (i.id === id ? { ...i, doneAt: i.doneAt ? null : new Date().toISOString() } : i)));
+}
+/* ---------- Docs: for now the protocol library to read; step-by-step protocols come later ---------- */
+function renderDocs() {
+  if (state.tab !== "docs") return;
+  const groups = {}; state.protocols.forEach(p => (groups[p.category || "Other"] = groups[p.category || "Other"] || []).push(p));
+  $("#pane").innerHTML = `<header class="pane-head gut"><h2>Docs</h2></header><div class="pane-body gut">
+    <p class="note" style="padding:0">Step-by-step protocols will live here. For now this is your protocol library: tap one to read it.</p>
+    ${Object.entries(groups).map(([g, ps]) => `<h3>${esc(g)}</h3><div class="pgroup">${ps.map(p => `<button class="prow" data-doc="${esc(p.id)}">${ICON.book}<span class="nm">${esc(p.title)}</span></button>`).join("")}</div>`).join("") || '<p class="note" style="padding:0">The protocol library is empty.</p>'}</div>`;
 }
 async function saveSettings(patch) {
   Object.assign(state.settings, patch);
@@ -1463,10 +1776,14 @@ async function saveSettings(patch) {
 function openSettings() {
   const st = state.settings, g = state.glossary;
   const modelSel = (id, val) => `<select class="sel" id="${id}">${MODELS.map(m => `<option value="${m.id}"${m.id === val ? " selected" : ""}>${esc(m.label)}</option>`).join("")}</select>`;
-  const body = `<h3>Claude helper</h3>
+  const swatch = (id, k) => `<button class="skin" type="button" data-skin="${id}" aria-pressed="${(SKINS[st.theme] ? st.theme : "default") === id}"><span class="sw4">${k.light.tabs.map(c => `<i style="background:${c}"></i>`).join("")}</span><span>${esc(k.name)}</span></button>`;
+  const body = `<h3>Theme</h3>
+    <div class="skins" id="sSkins">${Object.entries(SKINS).map(([id, k]) => swatch(id, k)).join("")}</div>
+    <span class="help">Each theme follows your device's light or dark setting.</span>
+    <h3>Claude helper</h3>
     <div class="field"><label for="sFix">Model for fixing terms and reading handwriting</label>${modelSel("sFix", st.fixModel)}<span class="help">Quick is usually enough for spelling fixes. If a named model isn't available on your plan, Claude uses the matching tier and the note under the fix says which model answered.</span></div>
     <div class="field"><label for="sAsk">Model for questions</label>${modelSel("sAsk", st.askModel)}</div>
-    <button class="toggle" id="sAskPhotos" role="switch" aria-checked="${!!st.askPhotos}"><span>Send the entry's photos and handwriting with questions (slower)</span><span class="sw"></span></button>
+    <button class="toggle" id="sAskPhotos" role="switch" aria-checked="${!!st.askPhotos}"><span>Send photos and handwriting with questions (slower)</span><span class="sw"></span></button>
     <button class="toggle" id="sAuto" role="switch" aria-checked="${!!st.autoFix}"><span>Fix lab terms automatically when dictation stops</span><span class="sw"></span></button>
     <h3>Dictation</h3>
     <div class="field"><label for="sLang">Language</label><select class="sel" id="sLang">${[["en-US", "English (US)"], ["en-GB", "English (UK)"], ["tr-TR", "Turkish"]].map(([v, n]) => `<option value="${v}"${v === st.lang ? " selected" : ""}>${n}</option>`).join("")}</select></div>
@@ -1477,16 +1794,21 @@ function openSettings() {
     <input class="search" id="vFilter" type="search" placeholder="Search vocabulary" aria-label="Search vocabulary" autocomplete="off">
     <span class="help" id="vCount"></span>
     <div class="terms" id="vList"></div>
-    <div class="field needs-sample"><label>Grow it from your entries</label>
-      <span class="help">Claude reads the entries in this notebook and suggests lab terms that aren't in the vocabulary yet. You choose which to add.</span>
-      <button class="btn" id="vFind" type="button">${ICON.fix}Find terms in my entries</button>
+    <div class="field needs-sample"><label>Grow it from your notes</label>
+      <span class="help">Claude reads your notes and suggests lab terms that aren't in the vocabulary yet. You choose which to add.</span>
+      <button class="btn" id="vFind" type="button">${ICON.fix}Find terms in my notes</button>
       <div class="terms" id="vSug" hidden></div>
       <button class="btn primary" id="vAddAll" type="button" hidden>${ICON.plus}Add all</button>
     </div>
     <h3>Moving notes to Benchling</h3>
-    <p class="note" style="padding:0">In any Claude chat, say “Transfer today’s ATG ELN notes to Benchling.” Claude reads the day’s lines, photos and handwriting from here, writes them into your notebook, and marks each entry as transferred.</p>`;
+    <p class="note" style="padding:0">In a Claude Code session opened in this project's folder, say “Transfer my ATG ELN notes to Benchling.” Claude writes Daily's lines, photos and handwriting into Benchling, then moves them, unchanged, into the notebooks here that are named like the Benchling entries. Daily then shows only what is left.</p>`;
   const s = sheet("Settings", body);
   const b = s.body;
+  b.querySelector("#sSkins").addEventListener("click", ev => {
+    const k = ev.target.closest("[data-skin]"); if (!k) return;
+    applySkin(k.dataset.skin); saveSettings({ theme: k.dataset.skin });
+    b.querySelectorAll("[data-skin]").forEach(x => x.setAttribute("aria-pressed", String(x === k)));
+  });
   b.querySelector("#sFix").onchange = ev => saveSettings({ fixModel: ev.target.value });
   b.querySelector("#sAsk").onchange = ev => saveSettings({ askModel: ev.target.value });
   b.querySelector("#sLang").onchange = ev => saveSettings({ lang: ev.target.value });
@@ -1536,8 +1858,8 @@ function openSettings() {
       const t = `\n## ${e.title}\n` + e.blocks.map(k => [k.text, k.caption, k.transcript].filter(Boolean).join(" ")).filter(Boolean).join("\n");
       if (text.length + t.length > 60000) break; text += t;
     }
-    if (!text.trim()) { toast("There are no entries to read yet."); return; }
-    find.disabled = true; const label = find.innerHTML; find.innerHTML = ICON.fix + "Reading entries…";
+    if (!text.trim()) { toast("There are no notes to read yet."); return; }
+    find.disabled = true; const label = find.innerHTML; find.innerHTML = ICON.fix + "Reading your notes…";
     try {
       const r = await state.sample(`Below are a scientist's lab notebook entries (stem-cell and molecular biology) and their current lab vocabulary. List lab terms that appear in the entries and are missing from the vocabulary: reagents, media, kits, cell lines, genes and proteins, plasmid and sample IDs, instruments, programs, techniques and lab abbreviations. Some lines were dictated and may contain misheard words: include a term only if you are confident it is a real term, and give it in its correct spelling. Skip ordinary English words, dates, numbers, units and anything already in the vocabulary (ignoring case). At most 60 terms.
 Return only JSON: {"terms": ["..."]}
@@ -1549,7 +1871,7 @@ ${text}`, { ...modelOpts(state.settings.askModel), cache: false });
       const j = parseJSON(r.text);
       sug = [...new Set((Array.isArray(j.terms) ? j.terms : []).map(t => String(t).trim()).filter(t => t && t.length < 80))];
       drawSug();
-      toast(sug.length ? `${sug.length} suggested by ${answeredBy(r)}. Tap + to add.` : "No new terms found in your entries.");
+      toast(sug.length ? `${sug.length} suggested by ${answeredBy(r)}. Tap + to add.` : "No new terms found in your notes.");
     } catch (err) { toast(sampleError(err)); }
     finally { find.disabled = false; find.innerHTML = label; }
   };
@@ -1574,12 +1896,25 @@ async function keepAwake() { try { if ("wakeLock" in navigator && !wake && docum
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && (state.openId || dict.on)) keepAwake(); });
 
 /* ---------- keep the app inside the visible area, above the on-screen keyboard ---------- */
+const TIGHT_HEIGHT = 620, CARET_MARGIN = 12;
+let fitFrame = 0;
 function fitViewport() {
   const vv = window.visualViewport;
   const h = Math.round(vv ? vv.height : window.innerHeight);
   document.documentElement.style.setProperty("--app-h", h + "px");
-  document.body.classList.toggle("tight", h < 620);
-  if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
+  document.body.classList.toggle("tight", h < TIGHT_HEIGHT);
+  /* Once per frame, after the new height is laid out: bring the line being edited back inside the list, then undo any scroll the browser
+     gave the page itself. Doing the second without the first made iPad Safari scroll the page again to reach the caret, in a loop. */
+  cancelAnimationFrame(fitFrame);
+  fitFrame = requestAnimationFrame(() => {
+    const a = document.activeElement, box = a && a.closest ? a.closest(".lines") : null;
+    if (box) {
+      const r = a.getBoundingClientRect(), b = box.getBoundingClientRect();
+      if (r.bottom > b.bottom) box.scrollTop += Math.min(r.bottom - b.bottom + CARET_MARGIN, r.top - b.top);
+      else if (r.top < b.top) box.scrollTop -= b.top - r.top + CARET_MARGIN;
+    }
+    if (vv && (window.scrollY || vv.offsetTop)) window.scrollTo(0, 0);
+  });
 }
 if (window.visualViewport) { visualViewport.addEventListener("resize", fitViewport); visualViewport.addEventListener("scroll", fitViewport); }
 window.addEventListener("resize", fitViewport);
@@ -1587,7 +1922,14 @@ window.addEventListener("orientationchange", () => setTimeout(fitViewport, 250))
 
 /* ---------- static wiring ---------- */
 function wireStatic() {
+  let cached = ""; try { cached = localStorage.getItem("eln-skin") || ""; } catch (_) { /* storage blocked: the default shows until settings load */ }
+  applySkin(cached);
   fitViewport();
+  state.entries.set(DAILY, normalize({}, DAILY));
+  $("#tabs").addEventListener("click", ev => { const t = ev.target.closest(".tab"); if (t && t.dataset.tab !== state.tab) setTab(t.dataset.tab); });
+  $("#pane").addEventListener("click", onPaneClick);
+  $("#pane").addEventListener("submit", onPaneSubmit);
+  setTab(DAILY);
   $("#list").addEventListener("click", ev => { const o = ev.target.closest("[data-open]"); if (o) return openEntry(o.dataset.open); if (ev.target.closest("#newEntry")) newEntry(); });
   $("#editor").addEventListener("click", ev => { if (ev.target.closest("#blankNew")) newEntry(); });
   $("#search").addEventListener("input", ev => { state.filter = ev.target.value; renderRail(); });

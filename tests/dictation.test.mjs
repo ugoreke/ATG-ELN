@@ -2,7 +2,7 @@
 // dictation where the platform offers it. Run with: npm test
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { open, close, entry, textBlock, IPHONE, IPAD_LANDSCAPE } from "./helpers.mjs";
+import { open, close, openBook, tab, entry, textBlock, IPHONE, IPAD_LANDSCAPE } from "./helpers.mjs";
 
 after(close);
 
@@ -16,7 +16,7 @@ const NUCLEO = { from: "new cliff fiction", to: "nucleofection" };
 const voiceOf = page => page.evaluate(() => window.__store.config.voice);
 const openFix = async (opts, vp = IPHONE) => {
   const r = await open(vp, { entries: entry([textBlock("a", LINE)]), glossary: ["nucleofection"], ...opts });
-  await r.page.tap('[data-open="e1"]'); await r.page.tap("#tText");
+  await openBook(r.page); await r.page.tap("#tText");
   return r;
 };
 const fixOnce = async page => { await page.tap("#compFixBtn"); await page.waitForTimeout(350); };
@@ -82,7 +82,7 @@ test("undo of a fixed line decrements the pair; at zero it is removed", async ()
 
 test("Undo all in the entry menu takes the pairs back out", async () => {
   const { page, errors } = await open(IPAD_LANDSCAPE, { entries: entry([textBlock("a", LINE)]), glossary: ["nucleofection"], sampleScript: fixScript([NUCLEO]) });
-  await page.click('[data-open="e1"]'); await page.click("#moreBtn"); await page.click("#fixAll"); await page.waitForTimeout(500);
+  await openBook(page); await page.click("#moreBtn"); await page.click("#fixAll"); await page.waitForTimeout(500);
   assert.equal((await voiceOf(page)).pairs[0].n, 1);
   await page.click("#fixUndo"); await page.waitForTimeout(250);
   assert.deepEqual((await voiceOf(page)).pairs, []);
@@ -126,7 +126,7 @@ test("a failed write to config/voice does not break fixing", async () => {
   const { page, errors } = await openFix({ sampleScript: fixScript([NUCLEO]) });
   await page.evaluate(() => { window.claude.use = (u => async n => { const r = await u(n); if (n !== "db") return r; return { ...r, doc: p => { const d = r.doc(p); return p === "config/voice" ? { ...d, set: async () => { throw { code: "unavailable", message: "offline" }; } } : d; } }; })(window.claude.use); });
   await page.reload(); await page.waitForTimeout(300);
-  await page.tap('[data-open="e1"]'); await page.tap("#tText"); await fixOnce(page);
+  await openBook(page); await page.tap("#tText"); await fixOnce(page);
   assert.equal((await page.evaluate(() => window.__store.entries.e1.blocks[0].text)), "doing nucleofection for the plates");
   assert.deepEqual(errors, []);
 });
@@ -150,7 +150,7 @@ const dictCalls = async page => (await page.evaluate(() => window.__dict.calls))
 
 test("with Claude's dictation: Dictate starts it, partial shows, finals append, Stop runs Fix terms", async () => {
   const { page, errors } = await open(IPAD_LANDSCAPE, { entries: entry([textBlock("a", "x")]), glossary: ["nucleofection"], dictation: true, settings: { lang: "tr-TR" } });
-  await page.click('[data-open="e1"]'); await page.click("#tDict"); await page.waitForTimeout(50);
+  await openBook(page); await page.click("#tDict"); await page.waitForTimeout(50);
   assert.deepEqual(await dictCalls(page), [{ fn: "start", language: "tr" }]);
   await emit(page, "partial", { text: "new cliff" });
   assert.equal(await page.textContent("#interim"), "new cliff"); assert.ok(await page.isVisible("#interim"));
@@ -170,7 +170,7 @@ test("with Claude's dictation: Dictate starts it, partial shows, finals append, 
 
 test("with Claude's dictation: stopping with no words does not run Fix terms; the viewer's own Stop ends it", async () => {
   const { page, errors } = await open(IPAD_LANDSCAPE, { entries: entry(), dictation: true });
-  await page.click('[data-open="e1"]'); await page.click("#tDict"); await page.waitForTimeout(50);
+  await openBook(page); await page.click("#tDict"); await page.waitForTimeout(50);
   await page.click("#tDict"); await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__prompts.length), 0);
   await page.click("#tDict"); await page.waitForTimeout(50);
@@ -183,7 +183,7 @@ test("with Claude's dictation: stopping with no words does not run Fix terms; th
 
 test("not_granted: falls back to the old path and is not asked again in this page load", async () => {
   const { page, errors } = await open(IPAD_LANDSCAPE, { entries: entry(), dictation: { rejectStart: "not_granted" } });
-  await page.click('[data-open="e1"]'); await page.click("#tDict"); await page.waitForTimeout(300);
+  await openBook(page); await page.click("#tDict"); await page.waitForTimeout(300);
   assert.equal((await dictCalls(page)).filter(c => c.fn === "start").length, 1);
   if (await page.locator("#tDict.rec").count()) { await page.click("#tDict"); await page.waitForTimeout(200); }
   await page.click("#tDict"); await page.waitForTimeout(300);
@@ -194,7 +194,7 @@ test("not_granted: falls back to the old path and is not asked again in this pag
 test("without the dictation capability the page behaves as before", async () => {
   const { page, errors } = await open(IPAD_LANDSCAPE, { entries: entry() });
   assert.equal(await page.evaluate(() => window.__dict.calls.length), 0);
-  await page.click('[data-open="e1"]'); await page.click("#tDict"); await page.waitForTimeout(300);
+  await openBook(page); await page.click("#tDict"); await page.waitForTimeout(300);
   assert.equal(await page.evaluate(() => window.__dict.calls.length), 0, "no Claude dictation call");
   assert.deepEqual(errors, []);
 });
