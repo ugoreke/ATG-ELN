@@ -285,9 +285,9 @@ test("a custom Collection tab has its own pages, which Notebooks and Meetings do
   const { page, errors } = await open(IPHONE, { entries: { n1: book("261120_Notebook") } });
   const id = await addTab(page, "Reagents", "pages");
   await page.locator("#newEntry").click(); await page.fill("#newTitle", "Antibodies"); await page.locator("#newCreate").click(); await page.waitForTimeout(200);
-  await addLine(page, "anti-TDP43, 1:500");
+  await addLine(page, "anti-GFP, 1:500");
   const made = Object.values(await store(page, "entries")).find(e => e.title === "Antibodies");
-  assert.equal(made.kind, id); assert.deepEqual(made.blocks.map(b => b.text), ["anti-TDP43, 1:500"]);
+  assert.equal(made.kind, id); assert.deepEqual(made.blocks.map(b => b.text), ["anti-GFP, 1:500"]);
   await tab(page, "notebooks"); assert.deepEqual(await page.locator("#list .item .t").allTextContents(), ["261120_Notebook"]);
   await tab(page, "meetings"); assert.equal(await page.locator("#list .item").count(), 0);
   await tab(page, id); assert.deepEqual(await page.locator("#list .item .t").allTextContents(), ["Antibodies"]);
