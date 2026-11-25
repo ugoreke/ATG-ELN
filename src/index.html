@@ -52,25 +52,28 @@ svg.i{width:26px;height:26px;flex:none;fill:none;stroke:currentColor;stroke-widt
 #app{height:var(--app-h,100%);max-height:100%;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);overflow:hidden}
 @media (min-width:900px){
   #app{grid-template-columns:var(--tabs-w) clamp(270px,27vw,350px) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
-  #app[data-tab="daily"],#app[data-tab="todo"],#app[data-tab="docs"]{grid-template-columns:var(--tabs-w) minmax(0,1fr)}
+  #app[data-view="log"],#app[data-view="pane"]{grid-template-columns:var(--tabs-w) minmax(0,1fr)}
 }
 @media (max-width:899px){#app.editing .rail{display:none} #app:not(.editing) .editor{display:none}}
 @media (min-width:900px){.only-narrow{display:none!important}}
-#app[data-tab="daily"] .rail,#app[data-tab="todo"] .rail,#app[data-tab="docs"] .rail{display:none}
-#app[data-tab="todo"] .editor,#app[data-tab="docs"] .editor{display:none}
-#app:not([data-tab="todo"]):not([data-tab="docs"]) .pane{display:none}
-#app[data-tab="daily"] #back{display:none}
+#app[data-view="log"] .rail,#app[data-view="pane"] .rail{display:none}
+#app[data-view="pane"] .editor{display:none}
+#app:not([data-view="pane"]) .pane{display:none}
+#app[data-view="log"] #back{display:none}
 
 /* tabs: a row across the top that slides sideways (four in view); a column on the left edge when the screen is wide */
 .tabs{display:flex;align-items:stretch;gap:6px;min-width:0;min-height:0;background:var(--surface-2);border-bottom:1px solid var(--line);padding:8px max(8px,env(safe-area-inset-right,0px)) 8px max(8px,env(safe-area-inset-left,0px))}
 .tabs-scroll{flex:1;min-width:0;min-height:0;display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scrollbar-width:none;overscroll-behavior:contain}
 .tabs-scroll::-webkit-scrollbar{display:none}
-.tab{flex:0 0 calc((100% - 18px) / 4);min-width:0;min-height:52px;scroll-snap-align:start;border:0;border-radius:12px;padding:0 4px;background:var(--tab-bg);color:var(--tab-ink);font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:.95rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.tab{flex:0 0 calc((100% - 18px) / 4);min-width:0;min-height:52px;scroll-snap-align:start;border:0;border-radius:12px;padding:0 4px;background:var(--tab-bg);color:var(--tab-ink);font-family:var(--f-display);font-weight:700;font-stretch:85%;font-size:.95rem;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .tab[data-tab="daily"]{--tab-bg:var(--tab1);--tab-ink:var(--tab1-ink)}
 .tab[data-tab="notebooks"]{--tab-bg:var(--tab2);--tab-ink:var(--tab2-ink)}
 .tab[data-tab="meetings"]{--tab-bg:var(--tab3);--tab-ink:var(--tab3-ink)}
 .tab[data-tab="todo"]{--tab-bg:var(--tab4);--tab-ink:var(--tab4-ink)}
 .tab[data-tab="docs"]{--tab-bg:var(--surface);--tab-ink:var(--ink);border:1.5px solid var(--line)}
+.tab[data-shade="1"]{--tab-bg:var(--tab1);--tab-ink:var(--tab1-ink)} .tab[data-shade="2"]{--tab-bg:var(--tab2);--tab-ink:var(--tab2-ink)}
+.tab[data-shade="3"]{--tab-bg:var(--tab3);--tab-ink:var(--tab3-ink)} .tab[data-shade="4"]{--tab-bg:var(--tab4);--tab-ink:var(--tab4-ink)}
+.tab.add{--tab-bg:var(--surface);--tab-ink:var(--ink);border:2px dashed var(--muted);display:grid;place-items:center}
 .tab[aria-selected="true"]{box-shadow:inset 0 0 0 3px var(--ink),inset 0 0 0 5px var(--surface)}
 .tab:focus-visible{outline-offset:-3px}
 .tabs .btn.icon{flex:none;min-height:52px;min-width:52px;width:52px}
@@ -320,6 +323,12 @@ body.tight .editor.composing .ed-head{padding-block:6px}
 .todo.done .ck{background:var(--ok);border-color:var(--ok);color:var(--surface)}
 .todo .tx{flex:1;min-width:0;padding-top:12px;font-size:1.06rem;overflow-wrap:anywhere}
 .todo.done .tx{color:var(--muted);text-decoration:line-through}
+.todo span.tx{cursor:text;min-height:40px}
+.todo textarea.tx-edit{padding:10px 12px;margin-top:2px;border:1.5px solid var(--accent);border-radius:10px;background:var(--surface-2);color:var(--ink);text-decoration:none;resize:none;overflow:hidden;line-height:1.45;font-size:1.06rem}
+.todo textarea.tx-edit:focus{outline:none}
+.ttype{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:var(--tap);padding:10px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);text-align:left;width:100%}
+.ttype b{font-family:var(--f-display);font-weight:700} .ttype span{font-size:.88rem;color:var(--muted)}
+.ttype[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .todo .when{flex:none;font-family:var(--f-mono);font-size:.74rem;color:var(--muted);padding-top:17px;white-space:nowrap}
 .donehead{display:flex;align-items:center;gap:10px;min-height:var(--tap);margin-top:10px;padding:0 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface-2);font-family:var(--f-display);font-weight:650;text-align:left}
 .donehead svg.i{transition:transform .15s} .donehead[aria-expanded="true"] svg.i{transform:rotate(90deg)}
@@ -332,15 +341,9 @@ body.tight .editor.composing .ed-head{padding-block:6px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.btn:active,.tool:active{transform:none}}
 </style>
 
-<div id="app" data-tab="daily" class="editing">
+<div id="app" data-tab="daily" data-view="log" class="editing">
   <nav class="tabs" aria-label="Sections">
-    <div class="tabs-scroll" id="tabs" role="tablist">
-      <button class="tab" role="tab" data-tab="daily" aria-selected="true">Daily</button>
-      <button class="tab" role="tab" data-tab="notebooks" aria-selected="false">Notebooks</button>
-      <button class="tab" role="tab" data-tab="meetings" aria-selected="false">Meetings</button>
-      <button class="tab" role="tab" data-tab="todo" aria-selected="false">To-do</button>
-      <button class="tab" role="tab" data-tab="docs" aria-selected="false">Docs</button>
-    </div>
+    <div class="tabs-scroll" id="tabs"></div>
     <button class="btn icon" id="openSettings" aria-label="Settings and vocabulary"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
   </nav>
   <aside class="rail" aria-label="List">
@@ -421,8 +424,17 @@ const ICON = {
 };
 /* Where lines live. Daily is one running log (logs/daily). Notebooks and meetings are documents in "entries"; a meeting has kind "meeting". */
 const DAILY = "daily", DAILY_TITLE = "Daily", DAYS_PER_WEEK = 7, MS_PER_DAY = 864e5, SAVE_RETRY_MS = 5000;
-const TAB_IDS = ["daily", "notebooks", "meetings", "todo", "docs"];
-const KIND_OF_TAB = { notebooks: "notebook", meetings: "meeting" };
+/* Tabs. The five built-in ones come first; tabs added with the plus button follow (config/tabs). Each tab works in one of five ways. */
+const TAB_TYPES = [
+  { id: "log", name: "Running log", help: "One continuous list of lines under Day headers, like Daily. Nothing in it is sent to Benchling." },
+  { id: "pages", name: "Collection", help: "A list of titled pages, each with its own lines, like Notebooks." },
+  { id: "sessions", name: "Sessions", help: "A list of dated sessions, each with its own lines, like Meetings." },
+  { id: "checklist", name: "Checklist", help: "Things to tick off, with a folded Done section, like To-do." },
+  { id: "library", name: "Library", help: "Your protocol library to read, like Docs." }
+];
+const BUILTIN_TABS = [{ id: "daily", name: "Daily", type: "log" }, { id: "notebooks", name: "Notebooks", type: "pages" }, { id: "meetings", name: "Meetings", type: "sessions" }, { id: "todo", name: "To-do", type: "checklist" }, { id: "docs", name: "Docs", type: "library" }];
+const TAB_NAME_MAX = 10, TAB_SHADES = 4, CUSTOM_TAB = /^tab-[a-z0-9]{4,16}$/;
+const LOG_EMPTY = "No lines yet. Add lines as you work: text, dictation, photos or handwriting. They stay in this log.";
 const WORDS = {
   notebook: { one: "notebook", many: "notebooks", title: "Notebooks", fresh: "New notebook", create: "Create notebook", untitled: "Untitled notebook",
     blankH: "Open a notebook.", blankP: "A notebook holds the lines for one Benchling entry and is named like it. New lines start in Daily; Claude moves them here when it writes them to Benchling.",
@@ -433,8 +445,22 @@ const WORDS = {
 };
 const DAILY_EMPTY = "Nothing waiting. Add lines as you work: text, dictation, photos or handwriting. They stay in Daily until Claude writes them to Benchling and moves them into the matching notebook.";
 const NO_STORE = "ATG ELN keeps your notes in your Claude account. Open it from claude.ai or the Claude app while signed in to see and add notes.";
-const kindOf = e => (e && e.kind === "meeting" ? "meeting" : "notebook");
-const pathOf = id => (id === DAILY ? "logs/daily" : "entries/" + id);
+const allTabs = () => [...BUILTIN_TABS, ...state.tabs];
+const tabOf = id => allTabs().find(t => t.id === id);
+const isList = t => !!t && (t.type === "pages" || t.type === "sessions");
+/* a running log is one document in "logs" named after its tab: Daily, or a custom tab of that kind */
+const isLog = id => id === DAILY || CUSTOM_TAB.test(String(id));
+/* pages of a list tab are documents in "entries" whose kind names the tab: "notebook" (or none), "meeting", or a custom tab's id */
+const kindOf = e => (e && e.kind && e.kind !== "notebook" ? e.kind : "notebook");
+const kindOfTab = id => (id === "notebooks" ? "notebook" : id === "meetings" ? "meeting" : isList(tabOf(id)) ? id : "");
+function words(kind) {
+  if (WORDS[kind]) return WORDS[kind];
+  const t = tabOf(kind); if (!isList(t)) return null;
+  const one = t.type === "sessions" ? "session" : "page";
+  return { one, many: one + "s", title: t.name, fresh: "New " + one, create: "Create " + one, untitled: "Untitled " + one, blankH: `Open a ${one}, or start one.`,
+    blankP: `Each ${one} in ${t.name} keeps its own lines. They stay here and are not sent to Benchling unless you ask.`, empty: "No lines yet. Use the buttons to add some." };
+}
+const pathOf = id => (isLog(id) ? "logs/" + id : "entries/" + id);
 const byAt = (a, b) => String(a.at || "").localeCompare(String(b.at || ""));
 /* Themes. "default" keeps the page's own colours and only names its tab shades; the others replace the neutrals and the accent too.
    Strong colours are for tabs and small accents only; surfaces stay near-neutral so text keeps its contrast. */
@@ -483,8 +509,7 @@ const state = {
   entries: new Map(), protocols: [], glossary: { terms: [] }, voice: { pairs: [] }, dictation: null,
   settings: { fixModel: "quick", askModel: "default", autoFix: true, lang: "en-US" },
   openId: null, loaded: false, filter: "", selected: null,
-  tab: "daily", openByTab: {}, dailyLoaded: false, dailyExists: false, noStore: false,
-  todo: { items: [] }, todoLoaded: false
+  tab: "daily", openByTab: {}, noStore: false, tabs: [], tabsLoaded: false
 };
 const app = $("#app");
 
@@ -505,12 +530,13 @@ function persist(id, delay = 600) {
 }
 const retitled = new Set();  /* notebooks whose title was typed on this device and is not stored yet */
 const removed = new Map();   /* container id -> ids of lines taken out on this device, so a late snapshot can't bring them back */
-let dailyWaiting = false;    /* a Daily line was added before the stored Daily log arrived; it is saved once that is known */
+/* running logs: which have arrived from the store, which exist there, and which got a line before they arrived (saved once they do) */
+const logLoaded = new Set(), logExists = new Set(), logWaiting = new Set(), logWatched = new Set();
 function forget(id, bid) { if (!removed.has(id)) removed.set(id, new Set()); removed.get(id).add(bid); }
 /* resolves true when the container is stored */
 async function flush(id) {
   if (!state.db) return false;
-  if (id === DAILY && !state.dailyLoaded) { dailyWaiting = true; return false; }
+  if (isLog(id) && !logLoaded.has(id)) { logWaiting.add(id); return false; }
   if (inflight.has(id) || creating.has(id)) { dirty.add(id); return false; }
   const e = state.entries.get(id); if (!e) return false;
   inflight.add(id);
@@ -518,13 +544,13 @@ async function flush(id) {
     const ref = state.db.doc(pathOf(id));
     /* The page can't pin a write to a version, so read what is stored right before saving and take in anything that arrived from elsewhere
        (lines a transfer just moved into this notebook, a rename, Daily's moved list). A snapshot may not have reached this device yet. */
-    if (id !== DAILY || state.dailyExists) {
+    if (!isLog(id) || logExists.has(id)) {
       try { const now = await ref.get(); if (now && now.exists) takeRemote(id, now.data() || {}); } catch (_) { /* the save below reports a real connection problem */ }
     }
     const body = { protocols: e.protocols, updatedAt: e.updatedAt, blocks: e.blocks.filter(b => !b.pending).map(({ pending, localUrl, ...b }) => b) };
-    if (id !== DAILY) { body.title = e.title; if (e.kind) body.kind = e.kind; }
+    if (!isLog(id)) { body.title = e.title; if (e.kind) body.kind = e.kind; }
     /* update() never touches Daily's "moved" list, which only the transfer session writes */
-    if (id === DAILY && !state.dailyExists) { await ref.set(body); state.dailyExists = true; } else await ref.update(body);
+    if (isLog(id) && !logExists.has(id)) { await ref.set(body); logExists.add(id); } else await ref.update(body);
     failed.delete(id); clearTimeout(retries.get(id)); retries.delete(id);
     if (body.title === e.title) retitled.delete(id);
     if (state.openId === id) setSave("Saved");
@@ -547,7 +573,7 @@ async function saveNow(id) {
   for (let i = 0; inflight.has(id) && i < 100; i++) await new Promise(r => setTimeout(r, 50));
   return flush(id);
 }
-const busy = id => timers.has(id) || inflight.has(id) || dirty.has(id) || creating.has(id) || failed.has(id) || (id === DAILY && dailyWaiting) || (state.entries.get(id)?.blocks || []).some(b => b.pending);
+const busy = id => timers.has(id) || inflight.has(id) || dirty.has(id) || creating.has(id) || failed.has(id) || logWaiting.has(id) || (state.entries.get(id)?.blocks || []).some(b => b.pending);
 function setSave(t, err) {
   const el = $("#saveState"); if (el) { el.textContent = err ? "Not saved" : t; el.classList.toggle("err", !!err); }
   const ban = $("#saveBanner"); if (ban) { ban.hidden = !err; ban.textContent = err ? t : ""; }
@@ -565,7 +591,7 @@ function normalize(raw, id) {
   const d = JSON.parse(JSON.stringify(raw || {}));
   /* Daily only: ids of lines a transfer already moved into a notebook. They are never shown or saved again, whatever copy this device holds. */
   const moved = id === DAILY && d.moved && typeof d.moved === "object" ? d.moved : {};
-  return { title: id === DAILY ? DAILY_TITLE : d.title || "", kind: id === DAILY ? "" : d.kind || "", createdAt: d.createdAt || new Date().toISOString(), updatedAt: d.updatedAt || d.createdAt || "",
+  return { title: id === DAILY ? DAILY_TITLE : isLog(id) ? (tabOf(id) || { name: "Log" }).name : d.title || "", kind: isLog(id) ? "" : d.kind || "", createdAt: d.createdAt || new Date().toISOString(), updatedAt: d.updatedAt || d.createdAt || "",
     protocols: Array.isArray(d.protocols) ? d.protocols : [], blocks: (Array.isArray(d.blocks) ? d.blocks : []).filter(b => !(b && moved[b.id])), moved,
     benchlingUrl: d.benchlingUrl || (d.lastTransfer && d.lastTransfer.benchlingUrl) || "" };
 }
@@ -576,8 +602,87 @@ function takeRemote(id, raw) {
   if (!local || !busy(id)) { state.entries.set(id, fresh); return; }
   const gone = removed.get(id) || new Set(), have = new Set(local.blocks.map(b => b.id));
   local.moved = fresh.moved; local.benchlingUrl = fresh.benchlingUrl || local.benchlingUrl;
-  if (id !== DAILY) { local.kind = local.kind || fresh.kind; if (!retitled.has(id)) local.title = fresh.title; }   /* a rename made elsewhere wins unless a title was typed here */
+  if (!isLog(id)) { local.kind = local.kind || fresh.kind; if (!retitled.has(id)) local.title = fresh.title; }   /* a rename made elsewhere wins unless a title was typed here */
   local.blocks = local.blocks.filter(b => !fresh.moved[b.id]).concat(fresh.blocks.filter(b => !have.has(b.id) && !gone.has(b.id)));
+}
+
+/* ---------- running logs (Daily and custom tabs of that kind) ---------- */
+let slow = 0;
+function watchLog(id) {
+  if (!state.entries.has(id)) state.entries.set(id, normalize({}, id));
+  if (logWatched.has(id) || !state.db) return;
+  logWatched.add(id);
+  state.db.doc(pathOf(id)).onSnapshot(s => {
+    const first = !logLoaded.has(id), raw = s.exists ? s.data() || {} : {};
+    logLoaded.add(id); if (s.exists) logExists.add(id);   /* never back to "not there": an older snapshot must not make the next save replace the log */
+    if (id === DAILY && state.loaded) clearTimeout(slow);
+    takeRemote(id, raw);
+    const waiting = logWaiting.delete(id);
+    /* a save from a stale copy can put moved lines back into the stored log; clean it once (this cannot repeat: the cleaned log has none) */
+    const stale = id === DAILY && raw.moved && (raw.blocks || []).some(b => b && raw.moved[b.id]);
+    if (waiting || stale) persist(id, 0);
+    if (state.openId === id) refreshEditor(first);
+  }, err => showProblem("Couldn't load " + state.entries.get(id).title + " (" + ((err && (err.message || err.code)) || "connection problem") + "). It will load when the connection returns."));
+}
+/* ---------- custom tabs (config/tabs) ---------- */
+let tabWrites = 0;   /* while our own write is in flight, an older snapshot must not replace the newer list */
+function normalizeTabs(raw) {
+  const d = JSON.parse(JSON.stringify(raw || {})), seen = new Set(BUILTIN_TABS.map(t => t.id));
+  return (Array.isArray(d.tabs) ? d.tabs : []).filter(t => t && CUSTOM_TAB.test(String(t.id)) && TAB_TYPES.some(k => k.id === t.type) && typeof t.name === "string" && t.name.trim() && !seen.has(t.id) && seen.add(t.id))
+    .map(t => ({ id: t.id, type: t.type, name: t.name.trim().slice(0, TAB_NAME_MAX) }));
+}
+function watchTabs() { state.tabs.forEach(t => { if (t.type === "log") watchLog(t.id); if (t.type === "checklist") watchList(t.id); }); }
+function renderTabs() {
+  $("#tabs").innerHTML = allTabs().map((t, i) => `<button class="tab" role="tab" data-tab="${esc(t.id)}"${i < BUILTIN_TABS.length ? "" : ` data-shade="${(i - BUILTIN_TABS.length) % TAB_SHADES + 1}"`} aria-selected="${t.id === state.tab}">${esc(t.name)}</button>`).join("")
+    + `<button class="tab add" id="addTab" aria-label="Add a tab">${ICON.plus}</button>`;
+}
+/* change(tabs) -> new tabs. The stored list is read first and the change applied to that, so a tab added on another device isn't dropped;
+   entries this version doesn't understand are written back untouched; a failed save puts the bar back as it was. */
+async function saveTabs(change) {
+  if (!state.db) return false;
+  const before = state.tabs, ref = state.db.doc("config/tabs");
+  tabWrites++;
+  try {
+    let stored = before, raw = [];
+    try { const now = await ref.get(); if (now && now.exists) { raw = JSON.parse(JSON.stringify((now.data() || {}).tabs || [])); stored = normalizeTabs({ tabs: raw }); } } catch (_) { /* the write below reports a real connection problem */ }
+    const next = change(stored), known = new Set(stored.map(t => t.id));
+    state.tabs = next; watchTabs(); renderTabs();
+    await ref.set({ tabs: [...next, ...(Array.isArray(raw) ? raw : []).filter(t => !(t && known.has(t.id)))] });
+    return true;
+  } catch (err) { state.tabs = before; renderTabs(); toast("Couldn't save your tabs: " + ((err && (err.message || err.code)) || "connection problem")); return false; }
+  finally { tabWrites--; }
+}
+function openAddTab() {
+  if (!state.db || !state.tabsLoaded) { toast(state.noStore ? NO_STORE : "Your tabs are still loading. Try again in a moment."); return; }
+  let type = "";
+  const mine = () => state.tabs.map(t => `<div class="prow"><span class="nm">${esc(t.name)}</span><span class="help">${esc((TAB_TYPES.find(k => k.id === t.type) || {}).name || "")}</span><button class="btn small danger" data-rmtab="${esc(t.id)}">${ICON.trash}Remove</button></div>`).join("");
+  const body = `<form id="tabForm" class="field" autocomplete="off"><label for="tabName">Name</label>
+      <input class="search" id="tabName" maxlength="${TAB_NAME_MAX}" placeholder="Up to ${TAB_NAME_MAX} letters" enterkeyhint="done" autocapitalize="words">
+      <label>How it works</label>
+      ${TAB_TYPES.map(k => `<button type="button" class="ttype" data-type="${k.id}" aria-pressed="false"><b>${esc(k.name)}</b><span>${esc(k.help)}</span></button>`).join("")}
+      <button class="btn primary" type="submit" id="tabCreate">${ICON.plus}Add tab</button></form>
+    <div id="tabMine" class="pgroup"></div>`;
+  const s = sheet("Add a tab", body);
+  const drawMine = () => { s.body.querySelector("#tabMine").innerHTML = state.tabs.length ? `<h3>Tabs you added</h3>${mine()}<span class="help">Removing a tab hides it. Its lines and items are kept in your account and come back if Claude restores the tab.</span>` : ""; };
+  drawMine();
+  s.body.addEventListener("click", ev => {
+    const k = ev.target.closest("[data-type]");
+    if (k) { type = k.dataset.type; s.body.querySelectorAll("[data-type]").forEach(x => x.setAttribute("aria-pressed", String(x === k))); return; }
+    const rm = ev.target.closest("[data-rmtab]"); if (!rm) return;
+    armDelete(rm, async () => { const id = rm.dataset.rmtab; if (state.tab === id) setTab(DAILY); await saveTabs(tabs => tabs.filter(t => t.id !== id)); drawMine(); });
+  });
+  s.body.querySelector("#tabForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const input = s.body.querySelector("#tabName"), name = input.value.trim().slice(0, TAB_NAME_MAX);
+    if (!name) { toast("Give the tab a name."); input.focus(); return; }
+    if (!type) { toast("Choose how the tab works."); return; }
+    if (allTabs().some(t => t.name.toLowerCase() === name.toLowerCase())) { toast(`There is already a tab called “${name}”.`); return; }
+    const id = "tab-" + uid().replace(/[^a-z0-9]/g, "").slice(0, 8);
+    s.close();
+    if (!(await saveTabs(tabs => [...tabs, { id, name, type }]))) return;
+    setTab(id);
+    const btn = document.querySelector(`#tabs [data-tab="${id}"]`); if (btn) btn.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
 }
 
 /* ---------- boot ---------- */
@@ -590,33 +695,24 @@ async function boot() {
   app.classList.toggle("no-sample", !sample);
   if (!db) return noStore();
   state.db = db;
-  const slow = setTimeout(() => {
+  slow = setTimeout(() => {
     if (!state.loaded) $("#list").innerHTML = '<p class="note">Your notes are taking longer than usual to load. Check the connection; they will appear as soon as it returns.</p>';
-    if (!state.dailyLoaded) showProblem("Daily is taking longer than usual to load. Lines you add now are kept and saved as soon as the connection returns.");
+    if (!logLoaded.has(DAILY)) showProblem("Daily is taking longer than usual to load. Lines you add now are kept and saved as soon as the connection returns.");
   }, 10000);
   db.collection("entries").onSnapshot(snap => {
-    state.loaded = true; if (state.dailyLoaded) clearTimeout(slow);
+    state.loaded = true; if (logLoaded.has(DAILY)) clearTimeout(slow);
     const seen = new Set();
     snap.docs.forEach(d => { seen.add(d.id); takeRemote(d.id, d.data() || {}); });
-    for (const id of [...state.entries.keys()]) if (id !== DAILY && !seen.has(id) && !busy(id)) state.entries.delete(id);
+    for (const id of [...state.entries.keys()]) if (!isLog(id) && !seen.has(id) && !busy(id)) state.entries.delete(id);
     if (state.openId && !state.entries.has(state.openId)) closeEntry();
     renderRail(); if (state.openId) refreshEditor();
   }, err => { $("#list").innerHTML = `<p class="note">Couldn't load your notebooks (${esc(err.message || err.code)}). They will load when the connection returns.</p>`; });
-  db.doc("logs/daily").onSnapshot(s => {
-    const first = !state.dailyLoaded, raw = s.exists ? s.data() || {} : {};
-    state.dailyLoaded = true; state.dailyExists = state.dailyExists || !!s.exists;   /* an older "not there yet" snapshot must not make the next save replace the log */ if (state.loaded) clearTimeout(slow);
-    takeRemote(DAILY, raw);
-    const waiting = dailyWaiting; dailyWaiting = false;
-    /* a save from a stale copy can put moved lines back into the stored log; clean it once (this cannot repeat: the cleaned log has none) */
-    const stale = raw.moved && (raw.blocks || []).some(b => b && raw.moved[b.id]);
-    if (waiting || stale) persist(DAILY, 0);
-    if (state.openId === DAILY) refreshEditor(first);
-  }, err => showProblem("Couldn't load Daily (" + ((err && (err.message || err.code)) || "connection problem") + "). It will load when the connection returns."));
-  db.doc("logs/todo").onSnapshot(s => {
-    state.todoLoaded = true;
-    const d = s.exists ? s.data() || {} : {};
-    if (!todoPending && !todoProblem && !(todoWrittenAt && String(d.updatedAt || "") < todoWrittenAt)) state.todo = normalizeTodo(d);   /* not while saving, and never an echo older than our last save */
-    renderTodo();
+  watchLog(DAILY); watchList("todo");
+  db.doc("config/tabs").onSnapshot(s => {
+    state.tabsLoaded = true;
+    if (!tabWrites) state.tabs = normalizeTabs(s.exists ? s.data() : {});
+    watchTabs(); renderTabs();
+    if (!tabOf(state.tab)) setTab(DAILY);   /* the tab being shown was removed on another device */
   }, () => {});
   db.collection("protocols").onSnapshot(snap => {
     state.protocols = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.title || "").localeCompare(b.title || ""));
@@ -641,11 +737,11 @@ function stats(e) {
 }
 /* the list of notebooks or of meetings, whichever tab is showing */
 function renderRail() {
-  const kind = KIND_OF_TAB[state.tab]; if (!kind) return;
-  const w = WORDS[kind], list = $("#list"), q = state.filter.trim().toLowerCase();
+  const kind = kindOfTab(state.tab), w = words(kind); if (!w) return;
+  const list = $("#list"), q = state.filter.trim().toLowerCase();
   $("#railTitle").textContent = w.title;
   if (state.noStore) return;
-  const all = [...state.entries.entries()].filter(([id, e]) => id !== DAILY && kindOf(e) === kind).sort((a, b) => (a[1].createdAt || "").localeCompare(b[1].createdAt || ""));
+  const all = [...state.entries.entries()].filter(([id, e]) => !isLog(id) && kindOf(e) === kind).sort((a, b) => (a[1].createdAt || "").localeCompare(b[1].createdAt || ""));
   const rows = all.filter(([, e]) => !q || e.title.toLowerCase().includes(q) || e.blocks.some(b => (b.text || "").toLowerCase().includes(q)));
   $("#countline").textContent = state.loaded ? `${all.length} ${all.length === 1 ? w.one : w.many}` : "ATG ELN";
   if (!state.loaded && !all.length) { list.innerHTML = '<p class="note">Loading…</p>'; return; }
@@ -664,16 +760,18 @@ function renderRail() {
 /* ---------- tabs ---------- */
 const isWide = () => window.matchMedia("(min-width:900px)").matches;
 function setTab(tab) {
-  if (!TAB_IDS.includes(tab)) return;
+  const t = tabOf(tab); if (!t) return;
+  const editing = $(".tx-edit"); if (editing) editing.blur();   /* keep a to-do edit in progress */
+  todoEditing = false;
   stopDictation(true);
-  if (KIND_OF_TAB[state.tab] && state.openId) state.openByTab[state.tab] = state.openId;
-  state.tab = tab; state.filter = ""; app.dataset.tab = tab;
-  document.querySelectorAll("#tabs .tab").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+  if (kindOfTab(state.tab) && state.openId) state.openByTab[state.tab] = state.openId;
+  state.tab = tab; state.filter = ""; app.dataset.tab = tab; app.dataset.view = t.type === "log" ? "log" : isList(t) ? "list" : "pane";
+  document.querySelectorAll("#tabs .tab[data-tab]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
   $("#search").value = ""; delete $("#list").dataset.ready; $("#pane").innerHTML = "";
-  if (tab === DAILY) return openEntry(DAILY);
-  const kind = KIND_OF_TAB[tab];
-  if (!kind) { closeEntry(); renderTodo(); renderDocs(); return; }
-  const w = WORDS[kind]; $("#search").placeholder = "Search " + w.many; $("#search").setAttribute("aria-label", "Search " + w.many);
+  if (t.type === "log") { watchLog(tab); return openEntry(tab); }
+  const kind = kindOfTab(tab);
+  if (!kind) { closeEntry(); if (t.type === "checklist") watchList(tab); renderTodo(); renderDocs(); return; }
+  const w = words(kind); $("#search").placeholder = "Search " + w.many; $("#search").setAttribute("aria-label", "Search " + w.many);
   /* with room for both, the list sits beside the one last open; otherwise the list comes first and a tap opens one */
   const last = state.openByTab[tab], e = state.entries.get(last);
   if (isWide() && e && kindOf(e) === kind) openEntry(last); else closeEntry();
@@ -681,8 +779,7 @@ function setTab(tab) {
 /* New notebook or meeting: a form first. Nothing is saved until Create is tapped, so Back discards it. */
 function newEntry() {
   if (!state.db) return;
-  const kind = KIND_OF_TAB[state.tab]; if (!kind) return;
-  const w = WORDS[kind];
+  const kind = kindOfTab(state.tab), w = words(kind); if (!w) return;
   stashDraft();
   stopDictation(true);
   state.openId = null; state.again = null;
@@ -696,7 +793,7 @@ function newEntry() {
     <form class="create gut" id="newForm" autocomplete="off">
       <label for="newTitle">Title</label>
       <input class="title" id="newTitle" value="${esc(yymmdd(new Date()) + "_")}" spellcheck="false" enterkeyhint="done">
-      <span class="help">${kind === "meeting" ? "YYMMDD_Who or what the meeting is about" : "Name it like the Benchling entry: YYMMDD_Project_Line_Type"}</span>
+      <span class="help">${kind === "notebook" ? "Name it like the Benchling entry: YYMMDD_Project_Line_Type" : "YYMMDD_What it is about"}</span>
       <button class="btn primary" type="submit" id="newCreate">${ICON.plus}${w.create}</button>
       <button class="btn" type="button" id="newCancel">Cancel</button>
       ${state.protocols.length ? `<h3 style="margin:10px 0 0;font-family:var(--f-display);font-size:1.05rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)">Link protocols (optional)</h3>` +
@@ -715,12 +812,12 @@ function newEntry() {
     ev.preventDefault();
     const btn = $("#newCreate"); if (btn.disabled) return; btn.disabled = true;
     const id = uid(), now = new Date().toISOString();
-    const doc = { title: t.value.trim() || yymmdd(new Date()) + "_", createdAt: now, updatedAt: now, protocols: [...picked], blocks: [], ...(kind === "meeting" ? { kind } : {}) };
+    const doc = { title: t.value.trim() || yymmdd(new Date()) + "_", createdAt: now, updatedAt: now, protocols: [...picked], blocks: [], ...(kind === "notebook" ? {} : { kind }) };
     state.entries.set(id, normalize(doc, id)); creating.add(id);
     try {
       await state.db.doc(pathOf(id)).set(doc);
       creating.delete(id);
-      if (KIND_OF_TAB[state.tab] === kind) { openEntry(id); setSave("Saved"); } else renderRail();   /* he may have switched tabs while it was being created */
+      if (kindOfTab(state.tab) === kind) { openEntry(id); setSave("Saved"); } else renderRail();   /* he may have switched tabs while it was being created */
       if (dirty.delete(id)) flush(id);
     } catch (err) {
       creating.delete(id); state.entries.delete(id); btn.disabled = false;
@@ -735,7 +832,7 @@ function openEntry(id) {
   stashDraft();
   if (state.openId !== id) { stopDictation(true); state.again = null; }
   state.openId = id; state.selected = null;
-  if (KIND_OF_TAB[state.tab]) state.openByTab[state.tab] = id;
+  if (kindOfTab(state.tab)) state.openByTab[state.tab] = id;
   const ed = $("#editor"); ed.innerHTML = ""; ed.classList.remove("composing"); ed.appendChild($("#tpl-editor").content.cloneNode(true));
   app.classList.add("editing");
   wireEditor(); refreshEditor(true); renderRail(); keepAwake();
@@ -746,8 +843,8 @@ function closeEntry() {
   stopDictation(true);
   state.openId = null; state.again = null; app.classList.remove("editing");
   const ed = $("#editor"); ed.classList.remove("composing");
-  const w = WORDS[KIND_OF_TAB[state.tab]];
-  ed.innerHTML = w ? `<div class="blank gut"><h2>${w.blankH}</h2><p>${w.blankP}</p><button class="btn primary" id="blankNew"${state.db ? "" : " disabled"}>${ICON.plus}${w.fresh}</button></div>` : "";
+  const w = words(kindOfTab(state.tab));
+  ed.innerHTML = w ? `<div class="blank gut"><h2>${esc(w.blankH)}</h2><p>${esc(w.blankP)}</p><button class="btn primary" id="blankNew"${state.db ? "" : " disabled"}>${ICON.plus}${w.fresh}</button></div>` : "";
   renderRail();
 }
 const cur = () => state.entries.get(state.openId);
@@ -755,7 +852,7 @@ const cur = () => state.entries.get(state.openId);
 /* ---------- editor rendering ---------- */
 function refreshEditor(first) {
   const e = cur(); if (!e) return;
-  const daily = state.openId === DAILY;
+  const daily = isLog(state.openId);
   const t = $("#title"); if (t) { t.readOnly = daily; if (document.activeElement !== t && t.value !== e.title) t.value = e.title; }
   const firstAt = e.blocks.reduce((m, b) => (!m || String(b.at) < m ? String(b.at) : m), "");
   $("#created").textContent = daily ? (firstAt ? "Since " + nice(firstAt) : "") : "Started " + nice(firstAt || e.createdAt);
@@ -774,13 +871,13 @@ function renderChips() {
 /* Header for a day that has lines. Daily counts the days in the log (Day 1, Day 2…). A notebook or meeting counts time since its first line,
    in days and weeks only: Day 1–Day 7, then "Week 1, Day 1" on the 8th day, "Week 2, Day 2" fifteen days after the first. */
 function dayLabel(id, days, k) {
-  if (id === DAILY) return "Day " + (days.indexOf(k) + 1);
+  if (isLog(id)) return "Day " + (days.indexOf(k) + 1);
   const n = Math.round((new Date(k + "T12:00") - new Date(days[0] + "T12:00")) / MS_PER_DAY);
   return n < DAYS_PER_WEEK ? "Day " + (n + 1) : `Week ${Math.floor(n / DAYS_PER_WEEK)}, Day ${n % DAYS_PER_WEEK + 1}`;
 }
 function renderLines(scrollEnd) {
   const e = cur(), box = $("#lines"); if (!e || !box) return;
-  if (!e.blocks.length) { box.innerHTML = `<p class="note" style="padding-top:24px">${state.openId === DAILY ? DAILY_EMPTY : WORDS[kindOf(e)].empty}</p>`; return; }
+  if (!e.blocks.length) { box.innerHTML = `<p class="note" style="padding-top:24px">${esc(state.openId === DAILY ? DAILY_EMPTY : isLog(state.openId) ? LOG_EMPTY : (words(kindOf(e)) || WORDS.notebook).empty)}</p>`; return; }
   const empty = box.querySelector(":scope > .note"); if (empty) empty.remove();
   const blocks = [...e.blocks].sort(byAt);   /* shown in time order, so lines moved in from elsewhere fall under the right day */
   const days = [...new Set(blocks.map(b => ymd(new Date(b.at))))];
@@ -821,7 +918,7 @@ function makeLine(b) {
   else body = `<img class="shot${b.type === "ink" ? " ink" : ""}" alt="${b.type === "ink" ? "Handwritten note" : "Photo"}"><div class="trans" hidden></div><textarea class="ta cap" rows="1" data-field="caption" placeholder="Caption (optional)" aria-label="Caption"></textarea>`;
   const acts = (b.type === "text" ? `<button class="btn small needs-sample" data-act="fix">${ICON.fix}Fix terms</button>` : "")
     + (b.type === "ink" ? `<button class="btn small needs-sample" data-act="transcribe">${ICON.read}Read handwriting</button>` : "")
-    + (state.openId === DAILY ? "" : `<button class="btn small" data-act="move">${ICON.move}Move or copy</button>`)
+    + (isLog(state.openId) ? "" : `<button class="btn small" data-act="move">${ICON.move}Move or copy</button>`)
     + `<button class="btn small danger" data-act="del">${ICON.trash}Delete</button>`;
   n.innerHTML = `<div class="tm"></div><div class="body">${body}<div class="fixnote" hidden></div><div class="acts">${acts}</div></div>`;
   return n;
@@ -846,7 +943,7 @@ function grow(ta) {
 /* ---------- editor wiring ---------- */
 function wireEditor() {
   $("#back").onclick = closeEntry;
-  $("#title").addEventListener("input", ev => { const e = cur(); if (!e || state.openId === DAILY) return; e.title = ev.target.value; retitled.add(state.openId); persist(state.openId); renderRail(); });
+  $("#title").addEventListener("input", ev => { const e = cur(); if (!e || isLog(state.openId)) return; e.title = ev.target.value; retitled.add(state.openId); persist(state.openId); renderRail(); });
   $("#chips").addEventListener("click", ev => {
     const c = ev.target.closest("[data-proto]"); if (c) return showProtocol(c.dataset.proto);
     if (ev.target.closest("#linkProto")) pickProtocols();
@@ -910,16 +1007,15 @@ function deleteBlock(b) {
 }
 /* ---------- move or copy a line to another notebook (notebooks and meetings only; Daily's lines leave through a transfer) ---------- */
 function pickDestination(b) {
-  const from = state.openId; if (!cur() || from === DAILY) return;
+  const from = state.openId; if (!cur() || isLog(from)) return;
   if (b.pending) { toast("Wait for the image to finish uploading."); return; }
-  const rows = kind => [...state.entries.entries()].filter(([id, e]) => id !== DAILY && id !== from && kindOf(e) === kind)
+  const rows = kind => [...state.entries.entries()].filter(([id, e]) => !isLog(id) && id !== from && kindOf(e) === kind)
     .sort((x, y) => (x[1].title || "").localeCompare(y[1].title || ""))
-    .map(([id, e]) => `<button class="prow" data-dest="${esc(id)}"><span class="nm">${esc(e.title || WORDS[kind].untitled)}</span>${ICON.move}</button>`).join("");
-  const books = rows("notebook"), meets = rows("meeting");
+    .map(([id, e]) => `<button class="prow" data-dest="${esc(id)}"><span class="nm">${esc(e.title || words(kind).untitled)}</span>${ICON.move}</button>`).join("");
+  const groups = allTabs().filter(isList).map(t => [t.name, rows(kindOfTab(t.id))]).filter(([, html]) => html);
   const body = `<button class="toggle" id="keepCopy" role="switch" aria-checked="false"><span>Keep a copy here</span><span class="sw"></span></button>
     <p class="note" style="padding:0">Tap where this line should go. It keeps its time and wording.</p>
-    ${books ? `<h3>Notebooks</h3><div class="pgroup">${books}</div>` : ""}${meets ? `<h3>Meetings</h3><div class="pgroup">${meets}</div>` : ""}
-    ${books || meets ? "" : '<p class="note" style="padding:0">There is nowhere else to move it yet. Create another notebook first.</p>'}`;
+    ${groups.map(([name, html]) => `<h3>${esc(name)}</h3><div class="pgroup">${html}</div>`).join("") || '<p class="note" style="padding:0">There is nowhere else to move it yet. Create another notebook first.</p>'}`;
   const s = sheet("Move or copy line", body);
   const keep = s.body.querySelector("#keepCopy");
   keep.onclick = () => keep.setAttribute("aria-checked", String(keep.getAttribute("aria-checked") !== "true"));
@@ -1556,7 +1652,7 @@ OTHER PROTOCOLS IN THE LIBRARY (id: title), readable with read_protocol:
 ${unlinked.map(p => `${p.id}: ${p.title}`).join("\n") || "(none)"}
 
 OTHER ENTRIES (id: title), newest first, readable with read_entry. "daily" is the running log of lines not yet filed into a notebook:
-${others.map(([x, o]) => `${x}: ${o.title}${x !== DAILY && kindOf(o) === "meeting" ? " (meeting)" : ""}`).join("\n") || "(none)"}`;
+${others.map(([x, o]) => `${x}: ${o.title}${!isLog(x) && kindOf(o) === "meeting" ? " (meeting)" : ""}`).join("\n") || "(none)"}`;
 }
 function askTools(note) {
   const str = (v, max = 200) => String(v ?? "").trim().slice(0, max);
@@ -1679,8 +1775,11 @@ function openAsk() {
 }
 function openMore() {
   const e = cur(); if (!e) return;
-  const id = state.openId, daily = id === DAILY, kind = kindOf(e), w = WORDS[kind], other = kind === "meeting" ? "notebook" : "meeting";
-  const about = daily ? "Lines stay in Daily until Claude has written them to Benchling; it then moves them, unchanged, into the notebook named like the Benchling entry. In a Claude Code session opened in this project's folder, say “Transfer my ATG ELN notes to Benchling.”"
+  const id = state.openId, daily = isLog(id), kind = kindOf(e), w = words(kind) || WORDS.notebook;
+  const other = kind === "meeting" ? "notebook" : kind === "notebook" ? "meeting" : "";   /* only notebooks and meetings swap places */
+  const about = daily && id !== DAILY ? "Lines stay in this log. They are not sent to Benchling or moved to a notebook unless you ask Claude to."
+    : kind !== "notebook" && kind !== "meeting" ? "These lines stay here. They are not sent to Benchling or moved to a notebook unless you ask Claude to."
+    : daily ? "Lines stay in Daily until Claude has written them to Benchling; it then moves them, unchanged, into the notebook named like the Benchling entry. In a Claude Code session opened in this project's folder, say “Transfer my ATG ELN notes to Benchling.”"
     : kind === "meeting" ? "Meeting lines stay here. They are not sent to Benchling or moved to a notebook unless you ask Claude to."
     : "This notebook mirrors one Benchling entry, so keep its name the same as the entry's. Lines arrive from Daily after a transfer; select a line to edit it, or to move or copy it to another notebook.";
   const body = `<dl class="meta-grid"><dt>Lines</dt><dd>${esc(stats(e))}</dd><dt>Last change</dt><dd>${esc(e.updatedAt ? nice(e.updatedAt) + " " + hm(e.updatedAt) : "—")}</dd>${/^https:\/\//.test(e.benchlingUrl) ? `<dt>Benchling</dt><dd><a href="${esc(e.benchlingUrl)}" target="_blank" rel="noopener">Open the entry</a></dd>` : ""}</dl>
@@ -1689,12 +1788,12 @@ function openMore() {
     <div class="field needs-sample"><button class="btn" id="fixAll">${ICON.fix}Fix terms in every line</button>
       <button class="btn" id="fixUndo" hidden>${ICON.undo}Undo all</button>
       <span class="help">Checks each text line against your vocabulary, the way the Fix terms button does for one line.</span></div>
-    ${daily ? "" : `<h3>Keep it in</h3><button class="btn" id="swapKind">${ICON.move}Move to ${WORDS[other].title}</button>
+    ${daily ? "" : `${other ? `<h3>Keep it in</h3><button class="btn" id="swapKind">${ICON.move}Move to ${WORDS[other].title}</button>` : ""}
     <h3>Delete</h3><button class="btn danger" id="delEntry">${ICON.trash}Delete this ${w.one}</button>`}`;
-  const s = sheet(daily ? "Daily" : w.one[0].toUpperCase() + w.one.slice(1) + " details", body);
+  const s = sheet(daily ? e.title : w.one[0].toUpperCase() + w.one.slice(1) + " details", body);
   const fa = s.body.querySelector("#fixAll"); if (fa) fa.onclick = () => fixAllLines(fa);
   if (daily) return;
-  s.body.querySelector("#swapKind").onclick = () => {
+  if (other) s.body.querySelector("#swapKind").onclick = () => {
     const live = state.entries.get(id); if (!live) return;
     live.kind = other; persist(id, 0); s.close(); delete state.openByTab[state.tab]; closeEntry();
     toast(`Moved to ${WORDS[other].title}.`);
@@ -1708,63 +1807,98 @@ function openMore() {
   });
 }
 /* ---------- To-do: one plain list (logs/todo). Done items move to a folded section at the end, in the order they were ticked. ---------- */
-let todoOpen = false, todoPending = 0, todoProblem = "", todoQueue = Promise.resolve(), todoRetry = 0, todoWrittenAt = "";
+const lists = new Map();   /* checklist id ("todo", or a custom tab's id) -> its items and save state; stored at logs/<id> */
+let todoEditing = false;   /* while an item's text is being edited the list is not redrawn under the keyboard */
+function listOf(id) {
+  if (!lists.has(id)) lists.set(id, { items: [], loaded: false, open: false, pending: 0, problem: "", queue: Promise.resolve(), retry: 0, writtenAt: "", watched: false });
+  return lists.get(id);
+}
+const curListId = () => { const t = tabOf(state.tab); return t && t.type === "checklist" ? t.id : ""; };
 function normalizeTodo(raw) {
   const d = JSON.parse(JSON.stringify(raw || {}));   /* stored data is frozen; work on a copy */
   return { items: (Array.isArray(d.items) ? d.items : []).filter(i => i && i.id && typeof i.text === "string") };
 }
+function watchList(id) {
+  const l = listOf(id); if (l.watched || !state.db) return;
+  l.watched = true;
+  state.db.doc("logs/" + id).onSnapshot(s => {
+    l.loaded = true;
+    const d = s.exists ? s.data() || {} : {};
+    if (!l.pending && !l.problem && !(l.writtenAt && String(d.updatedAt || "") < l.writtenAt)) l.items = normalizeTodo(d).items;   /* not while saving, and never an echo older than our last save */
+    if (curListId() === id) renderTodo();
+  }, () => {});
+}
 const todoStamp = iso => { const d = new Date(iso); return `${d.getDate()} ${MO[d.getMonth()]} ${hm(iso)}`; };
-/* one write at a time, always of the newest list; a failed write is shown and retried, like lines are */
-function saveTodo(items) {
-  state.todo = { items }; renderTodo();
+/* one write at a time per list, always of the newest items; a failed write is shown and retried, like lines are */
+function saveTodo(id, items) {
+  const l = listOf(id); l.items = items; renderTodo();
   if (!state.db) return;
-  todoPending++;
-  todoQueue = todoQueue.then(async () => {
-    try { const at = new Date().toISOString(); await state.db.doc("logs/todo").set({ items: state.todo.items, updatedAt: at }); todoWrittenAt = at; todoProblem = ""; clearTimeout(todoRetry); }
+  l.pending++;
+  l.queue = l.queue.then(async () => {
+    try { const at = new Date().toISOString(); await state.db.doc("logs/" + id).set({ items: l.items, updatedAt: at }); l.writtenAt = at; l.problem = ""; clearTimeout(l.retry); }
     catch (err) {
-      todoProblem = "Not saved yet (" + ((err && (err.code || err.message)) || "connection problem") + "). Retrying every few seconds; keep this page open.";
-      clearTimeout(todoRetry); todoRetry = setTimeout(() => saveTodo(state.todo.items), SAVE_RETRY_MS);
-    } finally { todoPending--; renderTodo(); }
+      l.problem = "Not saved yet (" + ((err && (err.code || err.message)) || "connection problem") + "). Retrying every few seconds; keep this page open.";
+      clearTimeout(l.retry); l.retry = setTimeout(() => saveTodo(id, l.items), SAVE_RETRY_MS);
+    } finally { l.pending--; if (curListId() === id) renderTodo(); }
   });
 }
 function todoRow(i) {
   return `<div class="todo${i.doneAt ? " done" : ""}" data-todo="${esc(i.id)}"><button class="ck" role="checkbox" aria-checked="${!!i.doneAt}" aria-label="${i.doneAt ? "Done" : "Not done"}: ${esc(i.text)}">${ICON.check}</button>
-    <span class="tx">${esc(i.text)}</span><span class="when">${esc(todoStamp(i.doneAt || i.at))}</span>${i.doneAt ? `<button class="btn small ghost" data-tdel aria-label="Delete ${esc(i.text)}">${ICON.trash}</button>` : ""}</div>`;
+    <span class="tx" role="button" tabindex="0" aria-label="Edit: ${esc(i.text)}">${esc(i.text)}</span><span class="when">${esc(todoStamp(i.doneAt || i.at))}</span>${i.doneAt ? `<button class="btn small ghost" data-tdel aria-label="Delete ${esc(i.text)}">${ICON.trash}</button>` : ""}</div>`;
 }
 function renderTodo() {
-  if (state.tab !== "todo") return;
-  const pane = $("#pane");
-  if (!$("#todoForm")) pane.innerHTML = `<header class="pane-head gut"><h2>To-do</h2><div class="hint" id="todoBanner" role="alert" hidden></div>
-      <form class="vadd" id="todoForm" autocomplete="off"><input id="todoNew" placeholder="Add something to do" aria-label="New to-do" enterkeyhint="done"><button class="btn primary" type="submit">${ICON.plus}Add</button></form></header>
+  const id = curListId(); if (!id || todoEditing) return;
+  const l = listOf(id), pane = $("#pane");
+  if (!$("#todoForm")) pane.innerHTML = `<header class="pane-head gut"><h2>${esc(tabOf(id).name)}</h2><div class="hint" id="todoBanner" role="alert" hidden></div>
+      <form class="vadd" id="todoForm" autocomplete="off"><input id="todoNew" placeholder="Add something to do" aria-label="New item" enterkeyhint="done"><button class="btn primary" type="submit">${ICON.plus}Add</button></form></header>
     <div class="pane-body gut" id="todoList"></div>`;
-  const problem = state.noStore ? NO_STORE : todoProblem, ban = $("#todoBanner"); ban.hidden = !problem; ban.textContent = problem;
-  const active = state.todo.items.filter(i => !i.doneAt).sort(byAt);
-  const done = state.todo.items.filter(i => i.doneAt).sort((a, b) => String(a.doneAt).localeCompare(String(b.doneAt)));
-  $("#todoList").innerHTML = (active.length ? active.map(todoRow).join("") : `<p class="note">${state.todoLoaded || state.noStore ? (done.length ? "Nothing left to do." : "Nothing here yet. Add the first thing above.") : "Loading…"}</p>`)
-    + (done.length ? `<button class="donehead" id="doneHead" aria-expanded="${todoOpen}">${ICON.chev}Done (${done.length})</button>` + (todoOpen ? done.map(todoRow).join("") : "") : "");
+  const problem = state.noStore ? NO_STORE : l.problem, ban = $("#todoBanner"); ban.hidden = !problem; ban.textContent = problem;
+  const active = l.items.filter(i => !i.doneAt).sort(byAt);
+  const done = l.items.filter(i => i.doneAt).sort((a, b) => String(a.doneAt).localeCompare(String(b.doneAt)));
+  $("#todoList").innerHTML = (active.length ? active.map(todoRow).join("") : `<p class="note">${l.loaded || state.noStore ? (done.length ? "Nothing left to do." : "Nothing here yet. Add the first thing above.") : "Loading…"}</p>`)
+    + (done.length ? `<button class="donehead" id="doneHead" aria-expanded="${l.open}">${ICON.chev}Done (${done.length})</button>` + (l.open ? done.map(todoRow).join("") : "") : "");
+}
+/* tap an item's text to change it: Enter or tapping away saves, Escape puts it back, an emptied box keeps the old text */
+function editTodo(row, listId, itemId) {
+  const item = listOf(listId).items.find(i => i.id === itemId), span = row.querySelector("span.tx"); if (!item || !span) return;
+  const ta = document.createElement("textarea"); ta.className = "tx tx-edit"; ta.rows = 1; ta.value = item.text; ta.setAttribute("aria-label", "Edit item"); ta.enterKeyHint = "done";
+  span.replaceWith(ta); todoEditing = true; ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); grow(ta);
+  let finished = false;
+  const finish = save => {
+    if (finished) return; finished = true; todoEditing = false;
+    const text = ta.value.trim();
+    if (save && text && text !== item.text) saveTodo(listId, listOf(listId).items.map(i => (i.id === itemId ? { ...i, text } : i))); else renderTodo();
+  };
+  ta.addEventListener("input", () => grow(ta));
+  ta.addEventListener("keydown", ev => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); finish(true); } else if (ev.key === "Escape") finish(false); });
+  ta.addEventListener("blur", () => finish(true));
 }
 function onPaneSubmit(ev) {
   if (ev.target.id !== "todoForm") return;
   ev.preventDefault();
-  const input = $("#todoNew"), text = input.value.trim();
+  const id = curListId(), l = listOf(id), input = $("#todoNew"), text = input.value.trim();
   if (!text) { input.focus(); return; }
-  if (!state.todoLoaded) { toast(state.noStore ? NO_STORE : "Your list is still loading. Try again in a moment."); return; }
+  if (!l.loaded) { toast(state.noStore ? NO_STORE : "Your list is still loading. Try again in a moment."); return; }
   input.value = ""; input.focus();
-  saveTodo([...state.todo.items, { id: uid(), text, at: new Date().toISOString(), doneAt: null }]);
+  saveTodo(id, [...l.items, { id: uid(), text, at: new Date().toISOString(), doneAt: null }]);
 }
 function onPaneClick(ev) {
   const doc = ev.target.closest("[data-doc]"); if (doc) return showProtocol(doc.dataset.doc);
-  if (ev.target.closest("#doneHead")) { todoOpen = !todoOpen; return renderTodo(); }
-  const row = ev.target.closest("[data-todo]"); if (!row || !state.todoLoaded) return;
+  const listId = curListId(); if (!listId) return;
+  const l = listOf(listId);
+  const open = $(".tx-edit"); if (open && !ev.target.closest(".tx-edit")) open.blur();   /* save the edit in progress first; the tap below then acts on the saved list */
+  if (ev.target.closest("#doneHead")) { l.open = !l.open; return renderTodo(); }
+  const row = ev.target.closest("[data-todo]"); if (!row || !l.loaded) return;
   const id = row.dataset.todo, del = ev.target.closest("[data-tdel]");
-  if (del) return armDelete(del, () => saveTodo(state.todo.items.filter(i => i.id !== id)));
-  if (ev.target.closest(".ck")) saveTodo(state.todo.items.map(i => (i.id === id ? { ...i, doneAt: i.doneAt ? null : new Date().toISOString() } : i)));
+  if (del) return armDelete(del, () => saveTodo(listId, l.items.filter(i => i.id !== id)));
+  if (ev.target.closest(".ck")) return saveTodo(listId, l.items.map(i => (i.id === id ? { ...i, doneAt: i.doneAt ? null : new Date().toISOString() } : i)));
+  if (ev.target.closest("span.tx")) editTodo(row, listId, id);
 }
 /* ---------- Docs: for now the protocol library to read; step-by-step protocols come later ---------- */
 function renderDocs() {
-  if (state.tab !== "docs") return;
+  const t = tabOf(state.tab); if (!t || t.type !== "library") return;
   const groups = {}; state.protocols.forEach(p => (groups[p.category || "Other"] = groups[p.category || "Other"] || []).push(p));
-  $("#pane").innerHTML = `<header class="pane-head gut"><h2>Docs</h2></header><div class="pane-body gut">
+  $("#pane").innerHTML = `<header class="pane-head gut"><h2>${esc(t.name)}</h2></header><div class="pane-body gut">
     <p class="note" style="padding:0">Step-by-step protocols will live here. For now this is your protocol library: tap one to read it.</p>
     ${Object.entries(groups).map(([g, ps]) => `<h3>${esc(g)}</h3><div class="pgroup">${ps.map(p => `<button class="prow" data-doc="${esc(p.id)}">${ICON.book}<span class="nm">${esc(p.title)}</span></button>`).join("")}</div>`).join("") || '<p class="note" style="padding:0">The protocol library is empty.</p>'}</div>`;
 }
@@ -1926,7 +2060,14 @@ function wireStatic() {
   applySkin(cached);
   fitViewport();
   state.entries.set(DAILY, normalize({}, DAILY));
-  $("#tabs").addEventListener("click", ev => { const t = ev.target.closest(".tab"); if (t && t.dataset.tab !== state.tab) setTab(t.dataset.tab); });
+  renderTabs();
+  $("#tabs").addEventListener("click", ev => {
+    if (ev.target.closest("#addTab")) return openAddTab();
+    const t = ev.target.closest(".tab[data-tab]"); if (t && t.dataset.tab !== state.tab) setTab(t.dataset.tab);
+  });
+  /* tapping a tick or delete while an item is being edited must not blur the box first: that redraws the list under the finger and the tap is lost */
+  $("#pane").addEventListener("mousedown", ev => { if ($(".tx-edit") && ev.target.closest(".ck, [data-tdel], #doneHead")) ev.preventDefault(); });
+  $("#pane").addEventListener("keydown", ev => { if ((ev.key === "Enter" || ev.key === " ") && ev.target.matches("span.tx")) { ev.preventDefault(); ev.target.click(); } });
   $("#pane").addEventListener("click", onPaneClick);
   $("#pane").addEventListener("submit", onPaneSubmit);
   setTab(DAILY);

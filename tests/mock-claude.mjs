@@ -8,6 +8,7 @@
 //   sample(prompt) -> {text, ...} what "Claude" answers; default: echo the line back unchanged
 //   voice                         initial config/voice doc ({pairs: [...]})
 //   logs                          initial logs collection, e.g. { daily: { blocks: [...] }, todo: { items: [...] } }
+//   tabs                          custom tabs already stored in config/tabs: [{ id: "tab-abcd1234", name, type }]
 //   failSetOnce                   a document path whose first set() rejects once (tests the To-do save retry)
 //   dictation                     true, or {rejectStart: "not_granted"}: offer the dictation capability (default: null, like Safari)
 //                                 tests drive it with window.__dict.emit("partial"|"final"|"state", payload); window.__dict.calls lists start/stop
@@ -18,7 +19,7 @@ export function installMock(opts) {
     entries: opts.entries || {},
     protocols: opts.protocols || {},
     logs: opts.logs || {},
-    config: { ...(opts.voice ? { voice: opts.voice } : {}), glossary: { terms: opts.glossary || [] }, settings: { fixModel: "claude-sonnet-5-5", askModel: "default", autoFix: true, lang: "en-US", ...(opts.settings || {}) } }
+    config: { ...(opts.voice ? { voice: opts.voice } : {}), ...(opts.tabs ? { tabs: { tabs: opts.tabs } } : {}), glossary: { terms: opts.glossary || [] }, settings: { fixModel: "claude-sonnet-5-5", askModel: "default", autoFix: true, lang: "en-US", ...(opts.settings || {}) } }
   };
   const L = {}, D = {};
   const fire = c => setTimeout(() => {

@@ -15,7 +15,7 @@ Help the user keep their Benchling ELN complete, consistent and fast to write: n
 - Benchling AI (inside Benchling) is the source for how-to questions about Benchling itself. Ask the user to query it rather than guessing at the UI.
 
 ## Daily transfer from ATG ELN ("transfer my notes")
-The app has five tabs. **Daily** is one running log of everything not yet in Benchling. **Notebooks** mirror Benchling entries, one notebook per entry, with the same name. A transfer writes Daily's lines into Benchling and then moves them, unchanged, into the matching notebooks. Meetings, To-do and Docs are never transferred unless the user asks.
+The app has five tabs. **Daily** is one running log of everything not yet in Benchling. **Notebooks** mirror Benchling entries, one notebook per entry, with the same name. A transfer writes Daily's lines into Benchling and then moves them, unchanged, into the matching notebooks. Meetings, To-do, Docs and any tabs the user added with the plus button are never transferred unless the user asks.
 
 1. Source: the user's ATG ELN artifact (find it in the artifact list). Read the document `logs/daily` from its database and note its version. Its `blocks` are the lines to transfer; the log can span several days. Photo and sketch blocks carry an assetId; fetch each asset by that id, one per call. Read the `entries` collection too: documents without `kind: "meeting"` are the notebooks. If `logs/daily` does not exist or has no blocks, say there is nothing to transfer.
 2. Before changing anything, save a copy of `logs/daily` and of every notebook you will write to in `scratch/` (a dated subfolder).
@@ -44,7 +44,7 @@ The rule: a line is moved, not copied, and not edited. It must never be lost and
 - **Check the last transfer too.** At the start of every transfer, before moving anything new, go through `moved` in `logs/daily`: every id listed there must be in the notebook named by its `to`. A device that was offline can save an older copy of a notebook hours later and drop a moved line. If one is missing, put it back from the copy saved in `scratch/` (or from the Benchling entry if no copy exists) with a pinned write, and tell the user.
 - **Edits during a transfer.** A line the user changes in Daily while the transfer is running is moved with the wording the session read. If Daily's version changed between your read and your batch, re-read and use the new wording, in Benchling as well.
 - **Tidy `moved`.** Remove entries in `moved` older than 30 days whose ids are not in `blocks`, in the same batch as a move or in a pinned update of their own.
-- Never write to `logs/todo`, and never change a line's `id`, `at` or wording. Meetings (`kind: "meeting"`) are left alone unless the user asks for one to be transferred.
+- Never write to `logs/todo`, to `config/tabs`, or to any other document in `logs` except `logs/daily` (the others belong to tabs the user added), and never change a line's `id`, `at` or wording. Meetings (`kind: "meeting"`) are left alone unless the user asks for one to be transferred.
 - **Older notebooks.** Notebooks made before Daily existed may hold lines that were never transferred: a notebook with no `lastTransfer`, or lines with `at` later than `lastTransfer.at`. When the user asks to transfer, include those: write them to Benchling, leave them in their notebook, and set `lastTransfer = { at: <now, ISO>, benchlingUrl }` on that notebook.
 
 ## Creating an entry

@@ -235,6 +235,131 @@ test("each place has its own Ask chat: Daily, a notebook and a meeting", async (
   assert.deepEqual(errors, []);
 });
 
+/* ---------- custom tabs and editing ---------- */
+async function addTab(page, name, type) {
+  await page.locator("#tabs").evaluate(n => { n.scrollLeft = n.scrollWidth; n.scrollTop = n.scrollHeight; });
+  await page.locator("#addTab").click(); await page.fill("#tabName", name); await page.locator(`[data-type="${type}"]`).click(); await page.locator("#tabCreate").click(); await page.waitForTimeout(200);
+  return (await store(page, "config/tabs")).tabs.find(t => t.name === name).id;
+}
+
+test("the plus button after Docs offers five kinds of tab", async () => {
+  const { page, errors } = await open(IPHONE);
+  const order = await page.locator("#tabs > *").evaluateAll(n => n.map(x => x.id || x.dataset.tab));
+  assert.deepEqual(order, ["daily", "notebooks", "meetings", "todo", "docs", "addTab"]);
+  await page.locator("#tabs").evaluate(n => { n.scrollLeft = n.scrollWidth; });
+  await page.locator("#addTab").click();
+  assert.deepEqual(await page.locator(".ttype b").allTextContents(), ["Running log", "Collection", "Sessions", "Checklist", "Library"]);
+  await page.locator("#tabCreate").click(); await page.waitForTimeout(100);
+  assert.equal(await store(page, "config/tabs"), undefined, "nothing is created without a name and a kind");
+  assert.deepEqual(errors, []);
+});
+
+test("a custom Checklist tab keeps its own items, apart from To-do", async () => {
+  const { page, errors } = await open(IPHONE, { logs: { todo: { items: [{ id: "t", text: "in to-do", at: daysAgo(0), doneAt: null }] } } });
+  const id = await addTab(page, "Orders", "checklist");
+  assert.equal(await page.locator('.tab[aria-selected="true"]').textContent(), "Orders", "the new tab opens");
+  assert.equal(await page.locator(".pane-head h2").textContent(), "Orders");
+  await page.fill("#todoNew", "StemFlex"); await page.keyboard.press("Enter"); await page.waitForTimeout(150);
+  assert.deepEqual((await store(page, "logs/" + id)).items.map(i => i.text), ["StemFlex"]);
+  assert.deepEqual((await store(page, "logs/todo")).items.map(i => i.text), ["in to-do"]);
+  await tab(page, "todo");
+  assert.deepEqual(await page.locator(".todo .tx").allTextContents(), ["in to-do"]);
+  assert.deepEqual(errors, []);
+});
+
+test("a custom Running log tab stores its lines in its own log, and Daily is untouched", async () => {
+  const { page, errors } = await open(IPAD_LANDSCAPE, { logs: { daily: { blocks: [lineAt("d", "daily line", daysAgo(0))], protocols: [] } } });
+  const id = await addTab(page, "Imaging", "log");
+  assert.equal(await page.inputValue("#title"), "Imaging");
+  await addLine(page, "confocal, 63x oil");
+  assert.deepEqual((await store(page, "logs/" + id)).blocks.map(b => b.text), ["confocal, 63x oil"]);
+  assert.deepEqual((await store(page, "logs/daily")).blocks.map(b => b.text), ["daily line"]);
+  assert.deepEqual(await headers(page), ["Day 1"]);
+  await page.locator("#lines textarea.ta").first().click();
+  assert.equal(await page.locator('[data-act="move"]').count(), 0);
+  await tab(page, "daily"); assert.deepEqual(await shownLines(page), ["daily line"]);
+  assert.deepEqual(errors, []);
+});
+
+test("a custom Collection tab has its own pages, which Notebooks and Meetings do not show", async () => {
+  const { page, errors } = await open(IPHONE, { entries: { n1: book("261120_Notebook") } });
+  const id = await addTab(page, "Reagents", "pages");
+  await page.locator("#newEntry").click(); await page.fill("#newTitle", "Antibodies"); await page.locator("#newCreate").click(); await page.waitForTimeout(200);
+  await addLine(page, "anti-TDP43, 1:500");
+  const made = Object.values(await store(page, "entries")).find(e => e.title === "Antibodies");
+  assert.equal(made.kind, id); assert.deepEqual(made.blocks.map(b => b.text), ["anti-TDP43, 1:500"]);
+  await tab(page, "notebooks"); assert.deepEqual(await page.locator("#list .item .t").allTextContents(), ["261120_Notebook"]);
+  await tab(page, "meetings"); assert.equal(await page.locator("#list .item").count(), 0);
+  await tab(page, id); assert.deepEqual(await page.locator("#list .item .t").allTextContents(), ["Antibodies"]);
+  assert.deepEqual(errors, []);
+});
+
+test("stored custom tabs load (frozen data); removing one hides it and keeps its data", async () => {
+  const tabs = [{ id: "tab-abcd1234", name: "Orders", type: "checklist" }, { id: "tab-wxyz5678", name: "Papers", type: "library" }];
+  const { page, errors } = await open(IPAD_LANDSCAPE, { tabs, logs: { "tab-abcd1234": { items: [{ id: "o1", text: "primers", at: daysAgo(0), doneAt: null }] } }, protocols: PROTOCOLS });
+  assert.deepEqual(await page.locator("#tabs .tab[data-tab]").allTextContents(), ["Daily", "Notebooks", "Meetings", "To-do", "Docs", "Orders", "Papers"]);
+  await tab(page, "tab-wxyz5678"); assert.equal(await page.locator("[data-doc]").count(), 1);
+  await tab(page, "tab-abcd1234"); assert.deepEqual(await page.locator(".todo .tx").allTextContents(), ["primers"]);
+  await page.locator("#addTab").click();
+  const rm = page.locator('[data-rmtab="tab-abcd1234"]'); await rm.click(); await rm.click(); await page.waitForTimeout(200);
+  assert.deepEqual((await store(page, "config/tabs")).tabs.map(t => t.name), ["Papers"]);
+  assert.equal(await page.locator('.tab[aria-selected="true"]').textContent(), "Daily", "the removed tab was showing, so Daily shows");
+  assert.deepEqual((await store(page, "logs/tab-abcd1234")).items.map(i => i.text), ["primers"], "its items are kept");
+  assert.deepEqual(errors, []);
+});
+
+test("a to-do item's text can be edited: Enter saves, Escape puts it back, an emptied box keeps the old text", async () => {
+  const items = [{ id: "a", text: "order primmers", at: daysAgo(1), doneAt: null }, { id: "b", text: "done thing", at: daysAgo(1), doneAt: daysAgo(0) }];
+  const { page, errors } = await open(IPHONE, { logs: { todo: { items } } });
+  await tab(page, "todo");
+  const text = id => store(page, "logs/todo").then(d => d.items.find(i => i.id === id).text);
+  await page.locator('[data-todo="a"] .tx').click(); await page.fill(".tx-edit", "order primers for the knock-in"); await page.keyboard.press("Enter"); await page.waitForTimeout(150);
+  assert.equal(await text("a"), "order primers for the knock-in");
+  assert.equal(await page.locator('[data-todo="a"] span.tx').textContent(), "order primers for the knock-in");
+  await page.locator('[data-todo="a"] .tx').click(); await page.fill(".tx-edit", "something else"); await page.keyboard.press("Escape"); await page.waitForTimeout(100);
+  assert.equal(await text("a"), "order primers for the knock-in", "Escape keeps the old text");
+  await page.locator('[data-todo="a"] .tx').click(); await page.fill(".tx-edit", "   "); await page.locator(".pane-head h2").click(); await page.waitForTimeout(150);
+  assert.equal(await text("a"), "order primers for the knock-in", "an emptied box changes nothing");
+  await page.locator('[data-todo="a"] .tx').click(); await page.fill(".tx-edit", "saved by tapping away"); await page.locator(".pane-head h2").click(); await page.waitForTimeout(150);
+  assert.equal(await text("a"), "saved by tapping away");
+  await page.locator("#doneHead").click(); await page.locator('[data-todo="b"] .tx').click(); await page.fill(".tx-edit", "done thing, edited"); await page.keyboard.press("Enter"); await page.waitForTimeout(150);
+  const b = (await store(page, "logs/todo")).items.find(i => i.id === "b");
+  assert.equal(b.text, "done thing, edited"); assert.ok(b.doneAt, "editing a done item leaves it done");
+  assert.equal((await store(page, "logs/todo")).items.find(i => i.id === "a").at, items[0].at, "the timestamp is unchanged");
+  assert.deepEqual(errors, []);
+});
+
+test("adding a tab keeps tabs stored by another device, and entries this version doesn't know", async () => {
+  const { page, errors } = await open(IPHONE);
+  await page.evaluate(() => window.__remoteQuiet(s => { s.config.tabs = { tabs: [{ id: "tab-other123", name: "Elsewhere", type: "log" }, { id: "tab-future99", name: "Future", type: "kanban" }] }; }));
+  await addTab(page, "Mine", "checklist");
+  const stored = (await store(page, "config/tabs")).tabs;
+  assert.deepEqual(stored.map(t => t.name).sort(), ["Elsewhere", "Future", "Mine"]);
+  assert.deepEqual(await page.locator("#tabs .tab[data-shade]").allTextContents(), ["Elsewhere", "Mine"], "an unknown kind of tab is kept but not shown");
+  assert.deepEqual(errors, []);
+});
+
+test("a tab that could not be saved does not stay in the bar", async () => {
+  const { page, errors } = await open(IPHONE, { failSetOnce: "config/tabs" });
+  await page.locator("#tabs").evaluate(n => { n.scrollLeft = n.scrollWidth; });
+  await page.locator("#addTab").click(); await page.fill("#tabName", "Ghost"); await page.locator('[data-type="log"]').click(); await page.locator("#tabCreate").click(); await page.waitForTimeout(200);
+  assert.equal(await page.locator("#tabs .tab[data-shade]").count(), 0);
+  assert.ok(await page.isVisible(".toast"), "the problem is shown");
+  assert.deepEqual(errors, []);
+});
+
+test("ticking another item while one is being edited saves the edit and ticks, in one tap", async () => {
+  const items = [{ id: "a", text: "first", at: daysAgo(1, 9), doneAt: null }, { id: "b", text: "second", at: daysAgo(1, 10), doneAt: null }];
+  const { page, errors } = await open(IPHONE, { logs: { todo: { items } } });
+  await tab(page, "todo");
+  await page.locator('[data-todo="a"] .tx').click(); await page.fill(".tx-edit", "first, edited");
+  await page.locator('[data-todo="b"] .ck').click(); await page.waitForTimeout(200);
+  const saved = (await store(page, "logs/todo")).items;
+  assert.equal(saved.find(i => i.id === "a").text, "first, edited");
+  assert.ok(saved.find(i => i.id === "b").doneAt, "the tick landed");
+  assert.deepEqual(errors, []);
+});
+
 /* ---------- themes ---------- */
 const lum = rgb => { const c = rgb.match(/[\d.]+/g).slice(0, 3).map(v => v / 255).map(v => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
 const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
@@ -309,6 +434,9 @@ for (const [name, vp] of VIEWPORTS) {
     await page.locator("#tabs").evaluate(n => { n.scrollLeft = n.scrollWidth; n.scrollTop = n.scrollHeight; });
     await tab(page, "docs"); assert.equal(await page.locator("[data-doc]").count(), 1); await check("Docs");
     await page.locator("#openSettings").click(); await check("Settings"); await page.locator(".sheet [data-close]").click();
+    await page.locator("#tabs").evaluate(n => { n.scrollLeft = n.scrollWidth; n.scrollTop = n.scrollHeight; });
+    await page.locator("#addTab").click(); await check("Add a tab"); await page.fill("#tabName", "Reagents 2"); await page.locator('[data-type="checklist"]').click(); await page.locator("#tabCreate").click(); await page.waitForTimeout(200);
+    await check("custom tab"); await page.locator("#addTab").click(); await check("Add a tab, with one to remove"); await page.locator(".sheet [data-close]").click();
     await page.locator("#tabs").evaluate(n => { n.scrollLeft = 0; n.scrollTop = 0; });
     await tab(page, "daily"); assert.deepEqual(await shownLines(page), ["daily line"]);
     assert.deepEqual(errors, []);

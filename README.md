@@ -31,8 +31,9 @@ Five tabs:
 - **Daily.** The home view: one running log. Open the app and add lines straight away, with large buttons for gloved hands. Everything in Daily is waiting to go to Benchling.
 - **Notebooks.** One notebook per Benchling entry, with the same name, so you can see what was done without opening Benchling. Lines can be edited, and moved or copied to another notebook. Headers count from the notebook's first line: Day 1 to Day 7, then Week 1, Day 1 and so on.
 - **Meetings.** A list of meetings, each with its own lines. They are not sent to Benchling unless you ask.
-- **To-do.** One plain list. Ticked items fold into a Done section in the order you ticked them.
+- **To-do.** One plain list. Tap an item to edit it. Ticked items fold into a Done section in the order you ticked them.
 - **Docs.** For now, your protocol library to read. On narrow screens, slide the tab row sideways to reach it.
+- **Your own tabs.** The plus button after Docs adds a tab that works as a running log, a collection of pages, a list of sessions, a checklist or a library.
 
 And in every place you write:
 
