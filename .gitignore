@@ -21,3 +21,15 @@ scratch/*
 # images: only the README demo is tracked
 *.png
 !demo/*.png
+
+# recordings and speech models never belong in the repository
+*.m4a
+*.mp3
+*.wav
+*.caf
+*.aac
+*.ogg
+*.flac
+*.webm
+*.bin
+*.gguf

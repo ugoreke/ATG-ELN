@@ -12,6 +12,11 @@
 //   failSetOnce                   a document path whose first set() rejects once (tests the To-do save retry); "protocols/*" matches any id
 //   noDb                          no store at all, as when the page is opened signed out
 //   dictation                     true, or {rejectStart: "not_granted"}: offer the dictation capability (default: null, like Safari)
+//   assets                        text assets already stored: { id: "<text>" } (voice memo chunks are base64 text)
+//   fileAssets                    ids of stored files that are not text (a protocol's PDF, a photo), e.g. ["pdf1"]
+//   assetUsage                    { bytes, files, maxBytes, maxFiles }: storage already used and the quota (default 1 GiB, 5000 files)
+//   assetFailCalls                which upload calls reject once with store_unavailable, counted from 1, e.g. [2]
+//   assetDelayMs                  make each upload take this long
 //                                 tests drive it with window.__dict.emit("partial"|"final"|"state", payload); window.__dict.calls lists start/stop
 export function installMock(opts) {
   const freeze = o => { if (o && typeof o === "object") { Object.values(o).forEach(freeze); Object.freeze(o); } return o; };
@@ -71,7 +76,40 @@ export function installMock(opts) {
   let n = 0;
   window.__assetDeletes = [];   // ids the page asked to delete for good
   window.__assetUploads = [];   // what the page uploaded: type and size of each file
-  const assets = { upload: async blob => { window.__assetUploads.push({ type: blob.type, size: blob.size }); return { id: "asset" + (++n), url: "data:image/png;base64,iVBORw0KGgo=", sizeBytes: blob.size, contentType: blob.type }; }, delete: async id => { window.__assetDeletes.push(id); return {}; } };
+  /* assets behave like the store as measured on the iPad (scratch/audio-test): a closed list of types, so audio is refused under any
+     label; text is kept byte for byte; 20 MiB per file; a quota of bytes and files. Text assets are served back at /_blob/<id>. */
+  const ASSET_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml", "video/mp4", "video/webm", "application/pdf", "font/woff2", "font/woff", "font/ttf", "font/otf", "text/csv", "text/markdown", "application/json", "text/plain", "text/css", "text/javascript"];
+  const ASSET_MAX = 20 * 1024 * 1024, usage0 = opts.assetUsage || {};
+  const kept = new Map(Object.entries(opts.assets || {}).map(([id, text]) => [id, { text, contentType: "text/plain", sizeBytes: text.length, createdAt: new Date().toISOString() }]));
+  (opts.fileAssets || []).forEach(id => kept.set(id, { text: null, contentType: "application/pdf", sizeBytes: 16, createdAt: new Date().toISOString() }));
+  window.__assets = kept;
+  const usage = () => ({ files: (usage0.files || 0) + kept.size, bytes: (usage0.bytes || 0) + [...kept.values()].reduce((t, a) => t + a.sizeBytes, 0), maxFiles: usage0.maxFiles || 5000, maxBytes: usage0.maxBytes || 1024 * 1024 * 1024 });
+  let uploads = 0;
+  const assets = {
+    upload: async (blob, o = {}) => {
+      const type = o.type || blob.type, call = ++uploads;
+      if (!(blob instanceof Blob) || !blob.size) throw { code: "invalid_request", message: "empty or not a blob" };
+      if (!ASSET_TYPES.includes(type)) throw { code: "unsupported_type", message: "unsupported type " + type };
+      if (blob.size > ASSET_MAX) throw { code: "too_large", message: "over 20 MiB" };
+      if ((opts.assetFailCalls || []).includes(call)) throw { code: "store_unavailable", message: "offline" };
+      const u = usage(); if (u.bytes + blob.size > u.maxBytes || u.files + 1 > u.maxFiles) throw { code: "quota_or_state", message: "quota" };
+      const id = "asset" + (++n), text = type.startsWith("text/") ? await blob.text() : null;
+      if (opts.assetDelayMs) await new Promise(r => setTimeout(r, opts.assetDelayMs));
+      kept.set(id, { text, contentType: type, sizeBytes: blob.size, createdAt: new Date().toISOString() });
+      window.__assetUploads.push({ type, size: blob.size });
+      return { id, url: text === null ? "data:image/png;base64,iVBORw0KGgo=" : "/_blob/" + id, sizeBytes: blob.size, contentType: type };
+    },
+    list: async () => ({ assets: [...kept.entries()].map(([id, a]) => ({ id, url: "/_blob/" + id, contentType: a.contentType, sizeBytes: a.sizeBytes, createdAt: a.createdAt })), usage: usage() }),
+    delete: async id => { window.__assetDeletes.push(id); return { deleted: kept.delete(id) }; }
+  };
+  /* the page reads a stored text asset back with fetch("/_blob/<id>"); a deleted or unknown id is a 404 */
+  const realFetch = window.fetch.bind(window);
+  window.fetch = (url, init) => {
+    const m = typeof url === "string" && url.match(/^\/_blob\/([A-Za-z0-9_-]+)$/);
+    if (!m) return realFetch(url, init);
+    const a = kept.get(m[1]);
+    return Promise.resolve(a && a.text !== null ? new Response(a.text, { status: 200, headers: { "content-type": a.contentType } }) : new Response("not found", { status: 404 }));
+  };
   // dictation: like the runtime's namespace; events are emitted by the test, start() must be called inside the click
   const H = { partial: [], final: [], state: [] };
   const emit = (kind, payload) => H[kind].forEach(f => f(payload));

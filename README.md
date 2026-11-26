@@ -40,6 +40,7 @@ And in every place you write:
 - **Dictation with Fix terms.** Phone and tablet dictation mishears lab words. Fix terms matches what was written against your vocabulary by sound, asks you about words it is unsure of, and learns from the corrections you accept.
 - **Ask.** A chat per place (Daily, each notebook, each meeting). Claude sees all its lines and linked protocols, can look up your other protocols and notebooks, and asks short questions instead of guessing.
 - **Photos and handwriting.** Take photos, or write with Apple Pencil; handwriting can be transcribed.
+- **Voice memos.** Record with any recorder on the device (an Apple Shortcut that saves into Files works well), then tap **Recording** and choose the file. The line shows its name, length and status, and can play it back. A Claude session on a Mac later writes the transcript under the line, where Fix terms and Ask can use it. See "Transcribing recordings" below.
 - **Themes.** Default, Tide, Bloom, Saffron and Meadow in Settings, each in light and dark.
 
 ## Get your own copy
@@ -65,6 +66,19 @@ The app records; a Claude session does the transfer. Open a Claude Code session 
 
 The instructions come from one person's working setup and Benchling layout; expect to adjust the template and naming sections to yours.
 
+## Transcribing recordings
+
+Dictation on a phone or tablet drops words, so the app also takes recordings and has them transcribed later, on a Mac, offline.
+
+1. Once per Mac: `bash tools/transcribe/setup.sh`. It asks before each step. With Homebrew it installs `whisper-cpp` and `ffmpeg` if they are missing, then downloads the Whisper large-v3-turbo speech model (1.6 GB) and a small silence detector into `~/.cache/atg-eln/models`, checking each against a fixed SHA-256.
+2. Open a Claude Code session in this folder and say **"Transcribe my recordings."** Claude finds the voice memos that have no transcript in your ATG ELN, rebuilds each recording in `scratch/`, checks it against the SHA-256 the app stored, transcribes it with your vocabulary as a hint, and writes the transcript onto the same line. A transfer to Benchling does this first and sends the transcript, not the audio.
+
+Things to know:
+
+- The transcriber can take only a short hint (about 224 tokens), so it gets the terms most likely to be spoken, not your whole vocabulary. Check the transcript with Fix terms. It makes mistakes, especially on names and numbers.
+- The app stores a recording as text, in chunks, inside your artifact (1 GB and 5,000 files in all; Settings shows how much is used). Once a recording has a transcript and is older than 21 days the app deletes its audio and keeps the line and transcript (a transcript that just arrived keeps its audio three more days, so you can check it against the recording). A recording without a transcript is never deleted automatically. You can change the days or turn this off in Settings.
+- On a shared Mac, each person signs in to their own Claude account; a session only ever reads and writes that person's notebook.
+
 ## Working on it
 
 ```bash
@@ -72,8 +86,8 @@ npm run setup   # once: installs Playwright and its browser
 npm test
 ```
 
-The whole app is `src/index.html`. The tests run it against a stand-in for the Claude runtime (`tests/mock-claude.mjs`), so they need no account and no network. Camera, microphone, Apple Pencil pressure and real Claude answers can only be checked on a device.
+The whole app is `src/index.html`. The tests run it against a stand-in for the Claude runtime (`tests/mock-claude.mjs`), so they need no account and no network. Camera, microphone, Apple Pencil pressure, the file picker, playback of stored recordings and real Claude answers can only be checked on a device. The tests of `tools/transcribe/` do not run the transcriber itself.
 
 ## Privacy
 
-This repository holds the app, its tests, a vocabulary list and the project instructions. It contains no notes, no protocols and nobody's personal settings.
+This repository holds the app, its tests, the transcription tool, a vocabulary list and the project instructions. It contains no notes, no protocols, no recordings or transcripts and nobody's personal settings.
