@@ -48,6 +48,7 @@ If `CLAUDE.local.md` does not exist or lacks a "My settings" section, ask the us
 ## Working on the app
 
 - The whole app is `src/index.html`. Run `npm test` after every change, and add a test for every bug fixed.
+- After changing `src/index.html` or `tests/`, run the `eln-app-reviewer` agent (`.claude/agents/`) on the change, before publishing or committing. It knows this app's own invariants (frozen data, no write before the first snapshot, what protects a session's writes, the audio clean-up order, escaping, size limits, layout, contrast), reports by severity and never edits. Fix what it marks CRITICAL or HIGH.
 - Keep the test stand-in (`tests/mock-claude.mjs`) realistic: data from the store is deep-frozen, and snapshots replace the page's copies.
 - The app is for iPad and iPhone. The tests can't cover camera, microphone, Apple Pencil or real Claude answers; say plainly what was and wasn't tested.
 - Never commit notebook entries, protocols or anything from `CLAUDE.local.md`. Keep `src/index.html` free of any person's name or notebook content, since everyone runs the same file.

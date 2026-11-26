@@ -10,6 +10,7 @@ The batch is built and checked with `tools/transfer/transfer.mjs`, never by hand
 
 - Read documents with the data tool's `out_dir` set to a folder for this run in `scratch/` (for example `scratch/<YYMMDD>_transfer/read-1/`). Each document is saved as `<folder>/<collection>/<id>.json`, and the tool tells from that path which document a file is: do not rename or move the files. Note each document's `version` from the read; the tool takes it as a flag.
 - The first read of a run is the copy that step 3 of the transfer asks for. Keep it unchanged. Every later read goes into a new folder (`read-2/`, `after-1/`…) and every plan into a new folder (`plan-1/`…). The tool refuses to write over a file it read or over an earlier plan.
+- What else the run folder holds (the manifest, the photos, the page text of each Benchling entry, the reports of the `transfer-verifier` agent) and how a stopped transfer is picked up is in [run-folder.md](run-folder.md). Only lines that agent passed are moved (step 8 of [SKILL.md](SKILL.md)).
 
 ## The rules
 

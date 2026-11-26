@@ -1,0 +1,25 @@
+260310_ProjectX_Line-A_Nucleofection
+
+Goal
+Nucleofect Line-A clone 4 with pMADE-7.
+
+Samples or Materials
+Line-A clone 4, passage 12, thawed into one well of a 6-well plate in 2 mL medium with 10 µM ROCK inhibitor.
+pMADE-7, received from Sam, stock 1 µg/µL.
+
+Procedure
+Cells looked healthy and about 70% confluent before harvest.
+Count: 1.2 × 10^6 cells/mL, viability 94%, total volume 5 mL.
+Nucleofection: 800,000 cells per cuvette with 3 µg pMADE-7, program CA-137, 2 cuvettes.
+Each cuvette was plated into one well of a 12-well plate with 1 mL medium.
+
+Calculations
+Total cells: 1.2 × 10^6 cells/mL × 5 mL = 6.0 × 10^6 cells.
+Master mix for 3 reactions (2 cuvettes + 1 extra), 82 µL solution and 18 µL supplement per cuvette: 246 µL solution and 52 µL supplement.
+
+Images
+[image]
+Image 1: plate after plating. Label reads LINE-A c4 P12 260310.
+
+Run notes
+Next: change medium on Day 1 (11 March); check GFP on Day 2 (12 March).

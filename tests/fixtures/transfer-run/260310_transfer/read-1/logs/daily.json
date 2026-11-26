@@ -1,0 +1,92 @@
+{
+  "blocks": [
+    {
+      "id": "t1",
+      "type": "text",
+      "text": "Thawed Line-A clone 4 at passage 12 into one well of a 6-well plate, 2 mL medium with 10 uM ROCK inhibitor.",
+      "at": "2026-03-10T09:05:00.000Z"
+    },
+    {
+      "id": "t2",
+      "type": "text",
+      "text": "Counted Line-A: 1.2e6 cells per mL, viability 94 percent, total volume 5 mL.",
+      "at": "2026-03-10T09:40:00.000Z"
+    },
+    {
+      "id": "t8",
+      "type": "text",
+      "text": "Got the plasmid from Sam, P made 7, 1 ug per uL.",
+      "at": "2026-03-10T09:50:00.000Z"
+    },
+    {
+      "id": "t3",
+      "type": "text",
+      "text": "Nucleofected 800,000 cells per cuvette with 2 ug of P made 7, program CA-137, two cuvettes.",
+      "at": "2026-03-10T10:15:00.000Z"
+    },
+    {
+      "id": "t4",
+      "type": "text",
+      "text": "Plated each cuvette into one well of a 12-well plate with 1 mL medium.",
+      "at": "2026-03-10T10:20:00.000Z"
+    },
+    {
+      "id": "t6",
+      "type": "text",
+      "text": "Master mix for 2 cuvettes plus one extra: 82 uL solution and 18 uL supplement per cuvette.",
+      "at": "2026-03-10T10:30:00.000Z"
+    },
+    {
+      "id": "t5",
+      "type": "text",
+      "text": "Froze 3 vials of Line-A clone 4 at passage 13, 1e6 cells per vial, box B2 positions 4 to 6.",
+      "at": "2026-03-10T10:50:00.000Z"
+    },
+    {
+      "id": "p1",
+      "type": "photo",
+      "assetId": "asset-p1",
+      "url": "/_blob/asset-p1",
+      "caption": "plate after plating",
+      "at": "2026-03-10T11:00:00.000Z"
+    },
+    {
+      "id": "p2",
+      "type": "photo",
+      "assetId": "asset-p2",
+      "url": "/_blob/asset-p2",
+      "caption": "cell counter screen",
+      "at": "2026-03-10T11:05:00.000Z"
+    },
+    {
+      "id": "a1",
+      "type": "audio",
+      "at": "2026-03-10T11:20:00.000Z",
+      "attachedAt": "2026-03-10T11:25:00.000Z",
+      "fileName": "memo-a1.m4a",
+      "mime": "audio/mp4",
+      "bytes": 123456,
+      "duration": 42.5,
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "chunks": [
+        "chunk-a1-1"
+      ],
+      "caption": "made-up memo"
+    },
+    {
+      "id": "t7",
+      "type": "text",
+      "text": "Next: change medium on Day 1, check GFP on Day 2.",
+      "at": "2026-03-10T12:00:00.000Z"
+    },
+    {
+      "id": "t9",
+      "type": "text",
+      "text": "Order more cuvettes.",
+      "at": "2026-03-10T12:10:00.000Z"
+    }
+  ],
+  "protocols": [],
+  "moved": {},
+  "updatedAt": "2026-03-10T12:10:00.000Z"
+}

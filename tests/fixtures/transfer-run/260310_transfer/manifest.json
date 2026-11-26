@@ -1,0 +1,176 @@
+{
+  "run": "260310_transfer",
+  "startedAt": "2026-03-10T18:00:00.000Z",
+  "timeZone": "UTC",
+  "stepDone": 8,
+  "source": {
+    "daily": {
+      "file": "read-1/logs/daily.json",
+      "version": 7
+    },
+    "notebooks": []
+  },
+  "entries": [
+    {
+      "key": "entry-1",
+      "title": "260310_ProjectX_Line-A_Nucleofection",
+      "url": "https://benchling.com/example-lab/f/lib_made-up/etr_made-up-entry/edit",
+      "origin": "new one-off",
+      "day0": "2026-03-10",
+      "pageText": "benchling/entry-1.txt",
+      "readAt": "2026-03-10T18:40:00.000Z",
+      "images": {
+        "before": 0,
+        "found": [
+          {
+            "position": 1,
+            "lineId": "p1",
+            "caption": "Image 1: plate after plating. Label reads LINE-A c4 P12 260310."
+          }
+        ]
+      },
+      "notebookId": null
+    }
+  ],
+  "lines": [
+    {
+      "id": "t1",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t2",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t8",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t3",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t4",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t6",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t5",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "p1",
+      "type": "photo",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ],
+      "file": "photos/p1.jpg"
+    },
+    {
+      "id": "p2",
+      "type": "photo",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ],
+      "file": "photos/p2.jpg"
+    },
+    {
+      "id": "a1",
+      "type": "audio",
+      "status": "stays",
+      "entries": [],
+      "reason": "voice memo without a transcript"
+    },
+    {
+      "id": "t7",
+      "type": "text",
+      "status": "written",
+      "entries": [
+        "entry-1"
+      ]
+    },
+    {
+      "id": "t9",
+      "type": "text",
+      "status": "stays",
+      "entries": [],
+      "reason": "a reminder to order, not part of an experiment; no entry to place it in"
+    }
+  ],
+  "assumptions": [
+    {
+      "entry": "entry-1",
+      "lineIds": [],
+      "text": "Project name in the title (ProjectX) is not in the notes; taken from the notebook this work belongs to."
+    },
+    {
+      "entry": "entry-1",
+      "lineIds": [
+        "t3"
+      ],
+      "text": "Goal written from the notes: nucleofection of Line-A clone 4 with pMADE-7."
+    },
+    {
+      "entry": "entry-1",
+      "lineIds": [
+        "t7"
+      ],
+      "text": "Day 1 and Day 2 written with their dates, counted from Day 0 = 10 March 2026."
+    }
+  ],
+  "emailFacts": [
+    {
+      "entry": "entry-1",
+      "lineIds": [
+        "t8",
+        "t3"
+      ],
+      "fact": "The plasmid handed over is pMADE-7 (dictated: P made 7 -> written: pMADE-7), stock 1 ug/uL.",
+      "sender": "Sam Example",
+      "date": "2026-03-06",
+      "subject": "Plasmid for Tuesday"
+    }
+  ],
+  "photoFacts": [
+    {
+      "lineId": "p1",
+      "fact": "Plate label: LINE-A c4 P12 260310",
+      "openedByMainSession": true
+    }
+  ],
+  "checks": [],
+  "moves": []
+}
