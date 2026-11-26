@@ -9,7 +9,8 @@
 //   voice                         initial config/voice doc ({pairs: [...]})
 //   logs                          initial logs collection, e.g. { daily: { blocks: [...] }, todo: { items: [...] } }
 //   tabs                          custom tabs already stored in config/tabs: [{ id: "tab-abcd1234", name, type }]
-//   failSetOnce                   a document path whose first set() rejects once (tests the To-do save retry)
+//   failSetOnce                   a document path whose first set() rejects once (tests the To-do save retry); "protocols/*" matches any id
+//   noDb                          no store at all, as when the page is opened signed out
 //   dictation                     true, or {rejectStart: "not_granted"}: offer the dictation capability (default: null, like Safari)
 //                                 tests drive it with window.__dict.emit("partial"|"final"|"state", payload); window.__dict.calls lists start/stop
 export function installMock(opts) {
@@ -33,7 +34,7 @@ export function installMock(opts) {
       get: async () => ({ id, exists: !!store[c][id], data: () => (store[c][id] ? clone(store[c][id]) : undefined) }),
       onSnapshot: f => { (D[p] = D[p] || []).push(f); fire(c); return () => {}; },
       set: async d => {
-        if (opts.failSetOnce === p && !failedSet) { failedSet = true; throw { code: "unavailable", message: "offline" }; }
+        if (!failedSet && (opts.failSetOnce === p || (opts.failSetOnce || "").endsWith("/*") && p.startsWith(opts.failSetOnce.slice(0, -1)))) { failedSet = true; throw { code: "unavailable", message: "offline" }; }
         store[c][id] = JSON.parse(JSON.stringify(d)); fire(c);
       },
       update: async d => {
@@ -69,7 +70,8 @@ export function installMock(opts) {
   }, { limits: async () => ({ maxPromptBytes: 262144, images: { maxCount: 5, maxInputBytes: 2e7, mediaTypes: ["image/jpeg", "image/png"] }, tools: { maxCount: 8 } }) });
   let n = 0;
   window.__assetDeletes = [];   // ids the page asked to delete for good
-  const assets = { upload: async () => ({ id: "asset" + (++n), url: "data:image/png;base64,iVBORw0KGgo=" }), delete: async id => { window.__assetDeletes.push(id); return {}; } };
+  window.__assetUploads = [];   // what the page uploaded: type and size of each file
+  const assets = { upload: async blob => { window.__assetUploads.push({ type: blob.type, size: blob.size }); return { id: "asset" + (++n), url: "data:image/png;base64,iVBORw0KGgo=", sizeBytes: blob.size, contentType: blob.type }; }, delete: async id => { window.__assetDeletes.push(id); return {}; } };
   // dictation: like the runtime's namespace; events are emitted by the test, start() must be called inside the click
   const H = { partial: [], final: [], state: [] };
   const emit = (kind, payload) => H[kind].forEach(f => f(payload));
@@ -86,5 +88,5 @@ export function installMock(opts) {
     stop: async () => { window.__dict.calls.push({ fn: "stop" }); emit("state", { state: "finishing" }); emit("state", { state: "idle", reason: "stopped" }); },
     active: () => false, onPartial: sub("partial"), onFinal: sub("final"), onState: sub("state")
   };
-  window.claude = { use: async name => ({ db, sample, assets, user: null, dictation: opts.dictation ? dictation : null })[name] ?? null };
+  window.claude = { use: async name => ({ db: opts.noDb ? null : db, sample, assets, user: null, dictation: opts.dictation ? dictation : null })[name] ?? null };
 }

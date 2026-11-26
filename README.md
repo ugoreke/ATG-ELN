@@ -32,7 +32,7 @@ Five tabs:
 - **Notebooks.** One notebook per Benchling entry, with the same name, so you can see what was done without opening Benchling. Lines can be edited, and moved or copied to another notebook. Headers count from the notebook's first line: Day 1 to Day 7, then Week 1, Day 1 and so on.
 - **Meetings.** A list of meetings, each with its own lines. They are not sent to Benchling unless you ask.
 - **To-do.** One plain list. Tap an item to edit it. Ticked items fold into a Done section in the order you ticked them.
-- **Docs.** For now, your protocol library to read. On narrow screens, slide the tab row sideways to reach it.
+- **Docs.** Your protocol library. **Add protocol** takes typed or pasted text, or a file: text, Markdown and Word (.docx) files are read into text you can correct; a PDF is kept as a file to open (paste its text as well if Claude should use it). Protocols you add can be edited and deleted; all of them can be linked to a notebook. On narrow screens, slide the tab row sideways to reach it.
 - **Your own tabs.** The plus button after Docs adds a tab that works as a running log, a collection of pages, a list of sessions, a checklist or a library.
 
 And in every place you write:
@@ -49,7 +49,7 @@ You need a Claude account. Each person publishes their own copy, so notebooks ar
 1. Clone this repository and open the folder in Claude Code (or any Claude session that can publish artifacts).
 2. Ask Claude: *"Publish `src/index.html` as a new private artifact called ATG ELN, with the capabilities db, user, assets, sample (with images) and dictation."*
 3. Optional, to start with a stem-cell and molecular-biology vocabulary: *"Load the terms in `data/glossary.json` into this artifact's database as the document `config/glossary`, shaped `{ "terms": [...] }`."* You can also add terms yourself in the app's Settings.
-4. Optional, protocols: each one is a document `protocols/<id>` shaped `{ "title", "category", "kind": "protocol", "text" }`. Protocols are not included in this repository.
+4. Optional, protocols: add them in the app (Docs, **Add protocol**), or ask Claude to import several at once; each one is a document `protocols/<id>` shaped `{ "title", "category", "kind": "protocol", "text" }`. Protocols are not included in this repository.
 5. Open the artifact link in Safari on your iPad or iPhone, then Share → Add to Home Screen.
 
 These steps have not been tried from scratch on a second account yet; please open an issue if one of them fails.

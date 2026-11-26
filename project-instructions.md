@@ -71,6 +71,12 @@ The rule: a line is moved, not copied, and not edited. It must never be lost and
 7. Replace the placeholder with a caption giving the image order. Close the Chrome tab when done.
 - Keep full resolution. Never shrink images to make a transfer easier.
 
+## Saving protocols to data/protocols ("sync my protocols")
+Protocols added in the app's Docs tab live in the app's database (collection `protocols`), not on disk. `data/protocols/` in this folder is a local copy, never committed.
+- Read the whole `protocols` collection of the user's ATG ELN artifact and write each document to `data/protocols/<id>.json` with the fields as stored. For a protocol with an `assetId`, also fetch that asset and save it beside the JSON under its `fileName`.
+- Add and update only. If a file in `data/protocols/` has no document any more, list it in the report and leave it; removing it needs the user's permission.
+- Never write to the `protocols` collection during this step.
+
 ## Scratch space
 - `scratch/` in this folder is scratch and archive space: save copies of transferred photos there in a dated subfolder (YYMMDD_photos), and use it for any temporary or kept file. Its contents are never committed. Do not leave helper files in it. Deleting there needs the user's permission; otherwise move leftovers to `scratch/_to_delete/`.
 

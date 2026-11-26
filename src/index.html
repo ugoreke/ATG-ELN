@@ -238,6 +238,10 @@ textarea.box{min-height:160px;border-radius:12px;border:1.5px solid var(--line);
 .tbl table{border-collapse:collapse;font-size:.9rem;min-width:100%}
 .tbl td{border-bottom:1px solid var(--line);padding:8px 10px;vertical-align:top;font-variant-numeric:tabular-nums}
 .tbl tr:first-child td{font-weight:700;background:var(--surface-2)}
+a.btn{text-decoration:none;color:inherit}
+.acts2{display:flex;flex-wrap:wrap;gap:10px}
+.acts2 .btn{flex:1 1 auto}
+#pText{min-height:240px}
 pre.raw{white-space:pre;overflow-x:auto;font-family:var(--f-mono);font-size:.78rem;line-height:1.45;background:var(--surface-2);border-radius:10px;padding:12px;margin:0}
 .answer{white-space:pre-wrap;line-height:1.55;background:var(--surface-2);border-radius:12px;padding:14px 16px;min-height:3em}
 .byline{font-family:var(--f-mono);font-size:.78rem;color:var(--muted)}
@@ -360,6 +364,7 @@ body.tight .editor.composing .ed-head{padding-block:6px}
 
 <input type="file" id="camInput" accept="image/*" capture="environment" class="vh" tabindex="-1" aria-hidden="true">
 <input type="file" id="libInput" accept="image/*" multiple class="vh" tabindex="-1" aria-hidden="true">
+<input type="file" id="protoInput" class="vh" tabindex="-1" aria-hidden="true">
 
 <template id="tpl-editor">
   <header class="ed-head gut">
@@ -509,7 +514,7 @@ const state = {
   entries: new Map(), protocols: [], glossary: { terms: [] }, voice: { pairs: [] }, dictation: null,
   settings: { fixModel: "quick", askModel: "default", autoFix: true, lang: "en-US" },
   openId: null, loaded: false, filter: "", selected: null,
-  tab: "daily", openByTab: {}, noStore: false, tabs: [], tabsLoaded: false
+  tab: "daily", openByTab: {}, noStore: false, tabs: [], tabsLoaded: false, protosLoaded: false
 };
 const app = $("#app");
 
@@ -715,6 +720,7 @@ async function boot() {
     if (!tabOf(state.tab)) setTab(DAILY);   /* the tab being shown was removed on another device */
   }, () => {});
   db.collection("protocols").onSnapshot(snap => {
+    state.protosLoaded = true;
     state.protocols = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) })).sort((a, b) => (a.category || "").localeCompare(b.category || "") || (a.title || "").localeCompare(b.title || ""));
     if (state.openId) renderChips();
     renderDocs();
@@ -865,8 +871,9 @@ function refreshEditor(first) {
 }
 function renderChips() {
   const e = cur(), box = $("#chips"); if (!e || !box) return;
-  box.innerHTML = e.protocols.map(pid => { const p = state.protocols.find(x => x.id === pid); return `<button class="pchip" data-proto="${esc(pid)}">${ICON.book}${esc(p ? p.title : pid)}</button>`; }).join("")
-    + `<button class="pchip add" id="linkProto">${ICON.plus}${e.protocols.length ? "Protocols" : "Link a protocol"}</button>`;
+  /* a linked protocol that was since deleted from the library is left out rather than shown as a bare id */
+  const chips = e.protocols.map(pid => { const p = state.protocols.find(x => x.id === pid); if (!p && state.protosLoaded) return ""; return `<button class="pchip" data-proto="${esc(pid)}">${ICON.book}${esc(p ? p.title : pid)}</button>`; }).join("");
+  box.innerHTML = chips + `<button class="pchip add" id="linkProto">${ICON.plus}${chips ? "Protocols" : "Link a protocol"}</button>`;
 }
 /* Header for a day that has lines. Daily counts the days in the log (Day 1, Day 2…). A notebook or meeting counts time since its first line,
    in days and weeks only: Day 1–Day 7, then "Week 1, Day 1" on the 8th day, "Week 2, Day 2" fifteen days after the first. */
@@ -1544,9 +1551,11 @@ function sheet(title, bodyHTML, opts = {}) {
   const s = document.createElement("div"); s.className = "sheet"; s.setAttribute("role", "dialog"); s.setAttribute("aria-modal", "true");
   s.innerHTML = `<div class="panel"><div class="p-head gut"><h2>${esc(title)}</h2>${opts.headBtn || ""}<button class="btn icon" data-close aria-label="Close">${ICON.x}</button></div><div class="p-body gut">${bodyHTML}</div></div>`;
   document.body.appendChild(s);
-  const close = () => { s.remove(); opts.onClose && opts.onClose(); };
-  s.addEventListener("click", ev => { if (ev.target === s || ev.target.closest("[data-close]")) close(); });
-  s.addEventListener("keydown", ev => { if (ev.key === "Escape") close(); });
+  let closed = false;
+  const close = () => { if (closed) return; closed = true; s.remove(); opts.onClose && opts.onClose(); };
+  const kept = () => !!(opts.keep && opts.keep());   /* a form holding unsaved input closes only by its own buttons, not by a tap beside it or Escape */
+  s.addEventListener("click", ev => { if (ev.target.closest("[data-close]") || (ev.target === s && !kept())) close(); });
+  s.addEventListener("keydown", ev => { if (ev.key === "Escape" && !kept()) close(); });
   setTimeout(() => s.querySelector("[data-close]").focus(), 30);
   return { el: s, body: s.querySelector(".p-body"), close };
 }
@@ -1571,13 +1580,19 @@ function mdLite(src) {
 function showProtocol(pid) {
   const p = state.protocols.find(x => x.id === pid); const e = cur();
   if (!p) { toast("That protocol is no longer in the library."); return; }
-  const linked = e && e.protocols.includes(pid);
-  const body = `<dl class="meta-grid"><dt>Folder</dt><dd>${esc(p.category || "")}</dd><dt>Benchling</dt><dd class="mono">${esc(p.benchlingId || "—")}</dd></dl>
+  const linked = e && e.protocols.includes(pid), own = isOwnProto(p), file = ASSET_ID.test(p.assetId || "") ? p.assetId : "", text = String(p.text || "");
+  const body = `<dl class="meta-grid"><dt>Folder</dt><dd>${esc(p.category || "")}</dd>${own ? `<dt>Added</dt><dd>${esc(Number.isNaN(Date.parse(p.addedAt)) ? "—" : nice(p.addedAt))}</dd>` : `<dt>Benchling</dt><dd class="mono">${esc(p.benchlingId || "—")}</dd>`}</dl>
     ${e ? `<button class="btn${linked ? "" : " primary"}" id="pLink">${linked ? "Unlink from these notes" : "Link to these notes"}</button>` : ""}
-    <div class="doc">${/kampmann/.test(pid) ? `<pre class="raw">${esc(p.text)}</pre>` : mdLite(p.text || "")}</div>`;
-  const s = sheet(p.title, body);
+    ${file ? `<a class="btn" id="pOpenFile" href="/_blob/${file}" target="_blank" rel="noopener">${ICON.book}Open the PDF</a>` : ""}
+    ${file && !text.trim() ? `<p class="note" style="padding:0">This protocol is a PDF. Claude can't read a PDF here, so Fix terms and Ask only know its name. To let them use it, tap Edit and paste its text.</p>` : ""}
+    <div class="doc">${/kampmann/.test(pid) ? `<pre class="raw">${esc(text)}</pre>` : mdLite(text)}</div>
+    ${own ? `<div class="acts2"><button class="btn" id="pEdit">Edit</button><button class="btn danger" id="pDelete">${ICON.trash}Delete</button></div>` : ""}`;
+  const s = sheet(p.title || "Protocol", body);
   const b = s.body.querySelector("#pLink");
   if (b) b.onclick = () => { toggleProto(pid); s.close(); };
+  if (!own) return;
+  s.body.querySelector("#pEdit").onclick = () => { s.close(); openProtoForm(pid); };
+  s.body.querySelector("#pDelete").onclick = ev => armDelete(ev.currentTarget, async () => { if (await deleteProtocol(pid)) s.close(); });
 }
 function toggleProto(pid) {
   const e = cur(); if (!e) return;
@@ -1884,6 +1899,7 @@ function onPaneSubmit(ev) {
 }
 function onPaneClick(ev) {
   const doc = ev.target.closest("[data-doc]"); if (doc) return showProtocol(doc.dataset.doc);
+  if (ev.target.closest("#addProto")) return openProtoForm();
   const listId = curListId(); if (!listId) return;
   const l = listOf(listId);
   const open = $(".tx-edit"); if (open && !ev.target.closest(".tx-edit")) open.blur();   /* save the edit in progress first; the tap below then acts on the saved list */
@@ -1894,13 +1910,178 @@ function onPaneClick(ev) {
   if (ev.target.closest(".ck")) return saveTodo(listId, l.items.map(i => (i.id === id ? { ...i, doneAt: i.doneAt ? null : new Date().toISOString() } : i)));
   if (ev.target.closest("span.tx")) editTodo(row, listId, id);
 }
-/* ---------- Docs: for now the protocol library to read; step-by-step protocols come later ---------- */
+/* ---------- Docs: the protocol library, plus protocols the user adds (typed, pasted or from a file) ---------- */
+const PROTO_OWN = "upload", PROTO_FOLDER = "My protocols", PROTO_TITLE_MAX = 120, PROTO_FOLDER_MAX = 40, PROTO_FILE_MAX = 20 * 1024 * 1024;
+const PROTO_TEXT_MAX = 180000;   /* bytes of text; a stored document may be 256 KiB in all */
+const DOCX_XML_MAX = 10 * 1024 * 1024, PROTO_TEXT_EXT = ["txt", "text", "md", "markdown"], DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+const ASSET_ID = /^[A-Za-z0-9_-]{1,64}$/;   /* a stored id is only ever used as a file link when it looks like one */
+const isOwnProto = p => !!p && p.source === PROTO_OWN;   /* only protocols added in the app can be edited or deleted in the app */
+const errText = err => (err && (err.message || err.code)) || "connection problem";
 function renderDocs() {
   const t = tabOf(state.tab); if (!t || t.type !== "library") return;
   const groups = {}; state.protocols.forEach(p => (groups[p.category || "Other"] = groups[p.category || "Other"] || []).push(p));
-  $("#pane").innerHTML = `<header class="pane-head gut"><h2>${esc(t.name)}</h2></header><div class="pane-body gut">
-    <p class="note" style="padding:0">Step-by-step protocols will live here. For now this is your protocol library: tap one to read it.</p>
-    ${Object.entries(groups).map(([g, ps]) => `<h3>${esc(g)}</h3><div class="pgroup">${ps.map(p => `<button class="prow" data-doc="${esc(p.id)}">${ICON.book}<span class="nm">${esc(p.title)}</span></button>`).join("")}</div>`).join("") || '<p class="note" style="padding:0">The protocol library is empty.</p>'}</div>`;
+  $("#pane").innerHTML = `<header class="pane-head gut"><h2>${esc(t.name)}</h2><button class="btn primary" id="addProto">${ICON.plus}Add protocol</button></header><div class="pane-body gut">
+    <p class="note" style="padding:0">Your protocol library: tap one to read it. Add protocol takes typed or pasted text, or a text, Markdown, Word or PDF file.</p>
+    ${Object.entries(groups).map(([g, ps]) => `<h3>${esc(g)}</h3><div class="pgroup">${ps.map(p => `<button class="prow" data-doc="${esc(p.id)}">${ICON.book}<span class="nm">${esc(p.title || "Untitled")}</span></button>`).join("")}</div>`).join("") || '<p class="note" style="padding:0">The protocol library is empty.</p>'}</div>`;
+}
+/* a file is deleted only when no other protocol still points at it */
+function dropProtoFile(assetId, exceptId) {
+  if (!assetId || !state.assets || !ASSET_ID.test(assetId) || state.protocols.some(p => p.id !== exceptId && p.assetId === assetId)) return;
+  state.assets.delete(assetId).catch(() => {});
+}
+async function deleteProtocol(pid) {
+  const p = state.protocols.find(x => x.id === pid);
+  if (!state.db || !isOwnProto(p)) return false;
+  try { await state.db.doc("protocols/" + pid).delete(); }
+  catch (err) { toast("Couldn't delete the protocol: " + errText(err)); return false; }
+  dropProtoFile(p.assetId, pid);
+  toast(`Deleted “${p.title || "Untitled"}”.`);
+  return true;
+}
+/* Text out of a Word file's main part. Headings, list items and tables become the simple marks the reader understands. */
+function wordText(xml) {
+  const body = new DOMParser().parseFromString(xml, "application/xml").getElementsByTagName("w:body")[0];
+  if (!body) throw new Error("no text part");
+  const kids = (n, name) => [...n.children].filter(c => c.nodeName === name);
+  const SKIP = new Set(["w:pPr", "w:rPr", "w:del", "w:instrText"]);
+  const para = p => {
+    let t = "";
+    const walk = n => { for (const c of n.children) { if (c.nodeName === "w:t") t += c.textContent; else if (c.nodeName === "w:tab") t += "\t"; else if (c.nodeName === "w:br" || c.nodeName === "w:cr") t += "\n"; else if (!SKIP.has(c.nodeName)) walk(c); } };
+    walk(p); t = t.trim(); if (!t) return "";
+    const pr = kids(p, "w:pPr")[0], style = (pr && kids(pr, "w:pStyle")[0] && kids(pr, "w:pStyle")[0].getAttribute("w:val")) || "";
+    if (/^(heading|title)/i.test(style)) return "\n## " + t.replace(/\n/g, " ");
+    return (pr && kids(pr, "w:numPr").length) || /^list/i.test(style) ? "- " + t : t;
+  };
+  const cell = c => [...c.getElementsByTagName("w:p")].map(p => para(p).trim().replace(/\n/g, " ").replace(/\|/g, "/")).filter(Boolean).join("<br>");
+  const blocks = node => [...node.children].flatMap(c =>
+    c.nodeName === "w:p" ? [para(c)]
+    : c.nodeName === "w:tbl" ? [kids(c, "w:tr").map(r => "| " + kids(r, "w:tc").map(cell).join(" | ") + " |").join("\n") + "\n"]
+    : c.nodeName === "w:sectPr" ? [] : blocks(c));
+  return blocks(body).filter(Boolean).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+/* Unpack one zip member, giving up as soon as it grows past max (the size a zip declares can't be trusted). */
+async function inflate(data, max) {
+  const reader = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader(), parts = [];
+  for (let n = 0; ;) {
+    const { done, value } = await reader.read(); if (done) break;
+    n += value.length; if (n > max) { reader.cancel().catch(() => {}); throw new Error("too large"); }
+    parts.push(value);
+  }
+  return new TextDecoder().decode(await new Blob(parts).arrayBuffer());
+}
+/* A .docx is a zip; the text is in word/document.xml. Only that one part is opened. */
+async function docxText(file) {
+  if (typeof DecompressionStream !== "function") throw new Error("This browser can't open Word files. Copy the text from Word and paste it here.");
+  try {
+    const buf = new Uint8Array(await file.arrayBuffer()), dv = new DataView(buf.buffer), dec = new TextDecoder();
+    let end = -1;
+    for (let i = buf.length - 22; i >= 0 && i >= buf.length - 65557; i--) if (dv.getUint32(i, true) === 0x06054b50) { end = i; break; }
+    if (end < 0) throw new Error("not a zip");
+    let at = dv.getUint32(end + 16, true);
+    for (let n = dv.getUint16(end + 10, true); n > 0 && dv.getUint32(at, true) === 0x02014b50; n--) {
+      const method = dv.getUint16(at + 10, true), packed = dv.getUint32(at + 20, true), size = dv.getUint32(at + 24, true), nameLen = dv.getUint16(at + 28, true), from = dv.getUint32(at + 42, true);
+      if (dec.decode(buf.subarray(at + 46, at + 46 + nameLen)) === "word/document.xml") {
+        if (size > DOCX_XML_MAX || packed > DOCX_XML_MAX || (method !== 0 && method !== 8)) throw new Error("unsupported");
+        const start = from + 30 + dv.getUint16(from + 26, true) + dv.getUint16(from + 28, true), data = buf.subarray(start, start + packed);
+        if (data.length !== packed) throw new Error("cut short");
+        return wordText(method === 0 ? dec.decode(data) : await inflate(data, DOCX_XML_MAX));
+      }
+      at += 46 + nameLen + dv.getUint16(at + 30, true) + dv.getUint16(at + 32, true);
+    }
+    throw new Error("no text part");
+  } catch (_) { throw new Error("That Word file couldn't be read. Open it, copy the text and paste it here."); }
+}
+/* What a chosen file gives: { text } for files read into the box, { keep: true } for a PDF, which is stored as it is. */
+async function readProtoFile(f) {
+  const ext = ((f.name || "").match(/\.([^.]+)$/) || ["", ""])[1].toLowerCase(), type = f.type || "";
+  if (f.size > PROTO_FILE_MAX) throw new Error("That file is larger than 20 MB, which is the most that can be kept.");
+  if (ext === "pdf" || type === "application/pdf") {
+    if (!state.assets) throw new Error("Keeping a PDF needs edit access to this page. Paste its text instead.");
+    return { keep: true };
+  }
+  if (ext === "docx" || type === DOCX_TYPE) return { text: await docxText(f) };
+  if (PROTO_TEXT_EXT.includes(ext) || type === "text/plain" || type === "text/markdown") return { text: (await f.text()).replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").trim() };
+  throw new Error("That kind of file can't be read here. Choose a text, Markdown, Word (.docx) or PDF file, or paste the text.");
+}
+let protoPick = null;   /* what the open protocol form does with a chosen file */
+/* Add a protocol (no id) or edit one the user added. Nothing is stored until Save; closing the form discards it. */
+function openProtoForm(pid) {
+  if (!state.db) { toast(NO_STORE); return; }
+  if (!state.protosLoaded) { toast("Your protocols are still loading. Try again in a moment."); return; }
+  const old = pid ? state.protocols.find(x => x.id === pid) : null;
+  if (pid && !isOwnProto(old)) { toast("That protocol is no longer in the library."); return; }
+  const folders = [...new Set(state.protocols.map(p => p.category).filter(Boolean))];
+  /* the attached PDF: { assetId, name, type } once stored, { blob, name, type } while only chosen */
+  let file = old && ASSET_ID.test(old.assetId || "") ? { assetId: old.assetId, name: old.fileName || "PDF", type: old.fileType || "application/pdf" } : null;
+  let saving = false, closed = false, opened = "";
+  const fresh = new Set();   /* files this form uploaded; one that ends up unused is deleted again */
+  const dropFresh = () => { fresh.forEach(id => dropProtoFile(id)); fresh.clear(); };
+  const body = `<form id="pForm" class="field" autocomplete="off">
+      <label for="pTitle">Name</label><input class="search" id="pTitle" maxlength="${PROTO_TITLE_MAX}" placeholder="What the protocol is called" autocapitalize="sentences">
+      <label for="pCat">Folder</label><input class="search" id="pCat" list="pCats" maxlength="${PROTO_FOLDER_MAX}" placeholder="${esc(PROTO_FOLDER)}">
+      <datalist id="pCats">${folders.map(f => `<option value="${esc(f)}"></option>`).join("")}</datalist>
+      <button type="button" class="btn" id="pFile">${ICON.book}Choose a file</button>
+      <span class="help">Text, Markdown and Word (.docx) files are read into the box below, where you can correct them (tables and numbering come through roughly). A PDF is kept as a file to open: Claude can't read it here, so also paste its text below if Fix terms and Ask should use it.</span>
+      <div id="pFileNote"></div>
+      <label for="pText">Protocol text</label><textarea class="box" id="pText" placeholder="Type or paste the protocol here"></textarea>
+      <button class="btn primary" type="submit" id="pSave">${ICON.check}Save protocol</button></form>`;
+  const s = sheet(pid ? "Edit protocol" : "Add protocol", body, { onClose: () => { closed = true; protoPick = null; dropFresh(); }, keep: () => saving || snapshotOf() !== opened });
+  const q = sel => s.body.querySelector(sel), title = q("#pTitle"), cat = q("#pCat"), ta = q("#pText"), btn = q("#pSave");
+  if (old) { title.value = old.title || ""; cat.value = old.category || ""; ta.value = old.text || ""; }
+  const drawFile = () => { q("#pFileNote").innerHTML = file ? `<div class="prow"><span class="nm">${esc(file.name)}</span><button type="button" class="btn small danger" id="pFileRemove">Remove</button></div>` : ""; };
+  const snapshotOf = () => JSON.stringify([title.value, cat.value, ta.value, file ? file.assetId || file.name : ""]);
+  drawFile(); opened = snapshotOf();
+  q("#pFile").onclick = () => $("#protoInput").click();
+  q("#pFileNote").addEventListener("click", ev => { if (ev.target.closest("#pFileRemove")) { file = null; drawFile(); } });
+  protoPick = async f => {
+    try {
+      const got = await readProtoFile(f);
+      if (!s.el.isConnected) return;
+      if (got.keep) { file = { blob: new Blob([f], { type: "application/pdf" }), name: String(f.name || "PDF").slice(0, PROTO_TITLE_MAX), type: "application/pdf" }; drawFile(); }
+      else if (!got.text) { toast("No text was found in that file."); return; }
+      else ta.value = ta.value.trim() ? ta.value.replace(/\s+$/, "") + "\n\n" + got.text : got.text;
+      if (!title.value.trim()) title.value = String(f.name || "").replace(/\.[^.]+$/, "").slice(0, PROTO_TITLE_MAX);
+    } catch (err) { toast(errText(err), 7000); }
+  };
+  q("#pForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); if (saving) return;
+    const name = title.value.trim().slice(0, PROTO_TITLE_MAX), folder = (cat.value.trim() || PROTO_FOLDER).slice(0, PROTO_FOLDER_MAX), text = ta.value.replace(/\r\n?/g, "\n").trim();
+    if (!name) { toast("Give the protocol a name."); title.focus(); return; }
+    if (!text && !file) { toast("Type or paste the protocol, or choose a file."); ta.focus(); return; }
+    if (new TextEncoder().encode(text).length > PROTO_TEXT_MAX) { toast("That text is too long to keep as one protocol. Split it into two.", 7000); return; }
+    saving = true; btn.disabled = true; const label = btn.innerHTML; btn.innerHTML = "Saving…";
+    try {
+      if (file && file.blob) {
+        const r = await state.assets.upload(file.blob);
+        if (!r || !ASSET_ID.test(r.id || "")) { if (r && r.id) state.assets.delete(r.id).catch(() => {}); throw { message: "the file couldn't be stored" }; }
+        fresh.add(r.id); file = { assetId: r.id, name: file.name, type: file.type };
+        if (closed) throw { closed: true };
+        drawFile();
+      }
+      const now = new Date().toISOString();
+      let id = pid; while (!id || (!pid && state.protocols.some(p => p.id === id))) id = "up-" + uid().replace(/[^a-z0-9]/gi, "").slice(0, 8).toLowerCase();
+      const ref = state.db.doc("protocols/" + id);
+      let base = { kind: "protocol", benchlingId: "", source: PROTO_OWN, addedAt: now };
+      if (pid) {   /* the change is applied to what is stored now, so nothing added elsewhere is lost and a deleted protocol stays deleted */
+        const stored = await ref.get();
+        if (!stored || !stored.exists) throw { gone: true };
+        base = JSON.parse(JSON.stringify(stored.data() || {}));
+        if (!isOwnProto(base)) throw { gone: true };
+        if ((base.updatedAt || "") !== (old.updatedAt || "") || (base.assetId || "") !== (old.assetId || "")) throw { changed: true };
+      }
+      const { assetId: before, fileName: _n, fileType: _t, ...rest } = base;
+      await ref.set({ ...rest, title: name, category: folder, text, updatedAt: now, ...(file ? { assetId: file.assetId, fileName: file.name, fileType: file.type } : {}) });
+      if (file) fresh.delete(file.assetId);
+      if (before && (!file || before !== file.assetId)) dropProtoFile(before, id);
+      s.close(); toast(pid ? "Protocol saved." : `Added “${name}” to ${folder}.`);
+    } catch (err) {
+      toast(err && err.closed ? "The protocol wasn't saved because the form was closed."
+        : err && err.changed ? "This protocol was changed on another device since you opened it. Copy your text, close this form and open the protocol again."
+        : err && err.gone ? "This protocol was deleted on another device, so the change wasn't saved. Your text is still here to copy."
+        : err && err.code === "too_large" ? "That file is too large to keep." : "Couldn't save the protocol (" + errText(err) + "). Your text is still here; tap Save again.", 8000);
+    } finally { saving = false; if (closed) dropFresh(); if (btn.isConnected) { btn.disabled = false; btn.innerHTML = label; } }
+  });
+  setTimeout(() => { if (!pid && s.el.isConnected) title.focus(); }, 60);
 }
 async function saveSettings(patch) {
   Object.assign(state.settings, patch);
@@ -2076,6 +2257,7 @@ function wireStatic() {
   $("#search").addEventListener("input", ev => { state.filter = ev.target.value; renderRail(); });
   $("#openSettings").onclick = openSettings;
   $("#camInput").onchange = ev => { const f = [...ev.target.files]; ev.target.value = ""; if (f.length && state.openId) onFiles(f, "photo"); };
+  $("#protoInput").onchange = ev => { const f = ev.target.files[0]; ev.target.value = ""; if (f && protoPick) protoPick(f); };
   $("#libInput").onchange = ev => { const f = [...ev.target.files]; ev.target.value = ""; if (f.length && state.openId) onFiles(f, "library"); };
   window.addEventListener("beforeunload", () => { for (const id of timers.keys()) flush(id); });
 }
