@@ -1,3 +1,5 @@
+> **No longer loaded.** A Claude Code session in this folder does not read this file any more. The source is now `CLAUDE.md` (the always-on rules) and the skills in `.claude/skills/` (the procedures); change those, not this file. It is kept, with its content unchanged, only until the skills have passed one real transfer and one real transcription, and will then be deleted.
+
 # Project instructions: ATG ELN and Benchling
 
 These load automatically in a Claude Code session opened in this folder (through `CLAUDE.md`). In a Claude chat project, paste them into the project's custom instructions instead. "Your settings" means the values in `CLAUDE.local.md`.

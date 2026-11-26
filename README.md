@@ -57,14 +57,14 @@ These steps have not been tried from scratch on a second account yet; please ope
 
 ## Moving notes to Benchling
 
-The app records; a Claude session does the transfer. Open a Claude Code session in this folder and say **"Transfer my notes to Benchling."** The project instructions load by themselves (`CLAUDE.md` pulls in `project-instructions.md`), so there is nothing to paste. Claude reads the Daily log from your ATG ELN artifact, writes it into your Benchling notebook through the browser and uploads the photos. Once the text is confirmed in Benchling it moves those lines, unchanged, out of Daily and into the notebook named like the Benchling entry (creating the notebook if there is none), so Daily shows only what is left.
+The app records; a Claude session does the transfer. Open a Claude Code session in this folder and say **"Transfer my notes to Benchling."** There is nothing to paste: the procedures are skills in `.claude/skills/` that Claude loads when you ask (this one is `eln-transfer`), and the short rules that always apply are in `CLAUDE.md`. Claude reads the Daily log from your ATG ELN artifact, writes it into your Benchling notebook through the browser and uploads the photos. Once the text is confirmed in Benchling it moves those lines, unchanged, out of Daily and into the notebook named like the Benchling entry (creating the notebook if there is none), so Daily shows only what is left.
 
 - The first time, Claude asks for your Benchling address, project and the email account to search, and saves them in `CLAUDE.local.md`, which stays on your machine.
 - You must be signed in to Benchling in the browser Claude uses; it never types credentials.
 - `scratch/` is working space for these sessions, for example copies of transferred photos. Its contents are never committed.
 - If you use a Claude chat project instead of Claude Code, paste `project-instructions.md` into the project's custom instructions.
 
-The instructions come from one person's working setup and Benchling layout; expect to adjust the template and naming sections to yours.
+The skills come from one person's working setup and Benchling layout; expect to adjust the template and naming sections (in `.claude/skills/benchling-entry/SKILL.md`) to yours.
 
 ## Transcribing recordings
 
@@ -90,4 +90,4 @@ The whole app is `src/index.html`. The tests run it against a stand-in for the C
 
 ## Privacy
 
-This repository holds the app, its tests, the transcription tool, a vocabulary list and the project instructions. It contains no notes, no protocols, no recordings or transcripts and nobody's personal settings.
+This repository holds the app, its tests, the transcription tool, a vocabulary list, and the skills and project instructions for Claude sessions. It contains no notes, no protocols, no recordings or transcripts and nobody's personal settings.

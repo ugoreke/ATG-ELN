@@ -9,10 +9,16 @@ data/entries/
 data/voice.json
 data/*.private.json
 
-# local development notes and Claude Code project files
+# local development notes
 docs/
 CLAUDE.local.md
-.claude/
+
+# Claude Code: skills, agents and shared settings are tracked;
+# everything else under .claude/ (settings.local.json, worktrees...) stays local
+.claude/*
+!.claude/skills/
+!.claude/agents/
+!.claude/settings.json
 
 # scratch space: keep the folder, never its contents
 scratch/*
