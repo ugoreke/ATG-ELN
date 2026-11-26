@@ -40,7 +40,7 @@ And in every place you write:
 - **Dictation with Fix terms.** Phone and tablet dictation mishears lab words. Fix terms matches what was written against your vocabulary by sound, asks you about words it is unsure of, and learns from the corrections you accept.
 - **Ask.** A chat per place (Daily, each notebook, each meeting). Claude sees all its lines and linked protocols, can look up your other protocols and notebooks, and asks short questions instead of guessing.
 - **Photos and handwriting.** Take photos, or write with Apple Pencil; handwriting can be transcribed.
-- **Voice memos.** Record with any recorder on the device (an Apple Shortcut that saves into Files works well), then tap **Recording** and choose the file. The line shows its name, length and status, and can play it back. A Claude session on a Mac later writes the transcript under the line, where Fix terms and Ask can use it. See "Transcribing recordings" below.
+- **Voice memos.** Record with any recorder on the device (an Apple Shortcut that saves into Files works well), then tap **Recording** and choose the file. A zip archive holding one recording works too: the app unpacks it and stores the recording itself (zipping saves little, about 6% on an .m4a, because the audio is already compressed). An archive with more than one file, a password, or something that is not a recording is refused with a message. The line shows its name, length and status, and can play it back. A Claude session on a Mac later writes the transcript under the line, where Fix terms and Ask can use it. See "Transcribing recordings" below.
 - **Themes.** Default, Tide, Bloom, Saffron and Meadow in Settings, each in light and dark.
 
 ## Get your own copy
@@ -76,7 +76,7 @@ Dictation on a phone or tablet drops words, so the app also takes recordings and
 Things to know:
 
 - The transcriber can take only a short hint (about 224 tokens), so it gets the terms most likely to be spoken, not your whole vocabulary. Check the transcript with Fix terms. It makes mistakes, especially on names and numbers.
-- The app stores a recording as text, in chunks, inside your artifact (1 GB and 5,000 files in all; Settings shows how much is used). Once a recording has a transcript and is older than 21 days the app deletes its audio and keeps the line and transcript (a transcript that just arrived keeps its audio three more days, so you can check it against the recording). A recording without a transcript is never deleted automatically. You can change the days or turn this off in Settings.
+- The app stores a recording as text, in chunks, inside your artifact (1 GB and 5,000 files in all; Settings shows how much is used). Once a recording has a transcript and is older than 21 days the app deletes its audio and keeps the line and transcript (a transcript that just arrived keeps its audio three more days, so you can check it against the recording). A recording without a transcript is never deleted automatically. In Settings you can keep audio longer (21 days is the shortest) or turn this off.
 - On a shared Mac, each person signs in to their own Claude account; a session only ever reads and writes that person's notebook.
 
 ## Working on it

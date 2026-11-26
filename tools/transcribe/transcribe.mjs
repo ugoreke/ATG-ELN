@@ -3,6 +3,7 @@
 //
 //   node tools/transcribe/transcribe.mjs check
 //   node tools/transcribe/transcribe.mjs join  --out <audio file> --bytes <n> --sha256 <hex> <chunk-1.txt> <chunk-2.txt> ...
+//       (if the stored file is a zip archive holding one recording, the recording is unpacked into a new folder; use `out` from the result)
 //   node tools/transcribe/transcribe.mjs terms --glossary <glossary.json> [--voice <voice.json>] [--context <notes.txt>] --out <terms.txt>
 //   node tools/transcribe/transcribe.mjs run   --audio <audio file> [--terms <terms.txt>] [--language en-US] --out <result.json>
 //
@@ -10,9 +11,9 @@
 import { execFileSync } from "node:child_process";
 import { closeSync, existsSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { joinChunks, verifyRecording, pickTerms, promptFor, transcriptFrom, languageFor, audioFormat } from "./lib.mjs";
+import { joinChunks, verifyRecording, verifyBytes, isZip, unzipRecording, sha256, pickTerms, promptFor, transcriptFrom, languageFor, audioFormat } from "./lib.mjs";
 
 export const MODEL_DIR = process.env.ATG_ELN_MODELS || join(homedir(), ".cache", "atg-eln", "models");
 export const MODEL_FILE = process.env.ATG_ELN_MODEL || "ggml-large-v3-turbo.bin";
@@ -46,10 +47,16 @@ export function checkSetup() {
 
 function cmdJoin({ opts, rest }) {
   const out = need(opts, "out");
-  const buf = joinChunks(rest.map(p => readFileSync(p, "utf8")));
-  const ok = verifyRecording(buf, { bytes: need(opts, "bytes"), sha256: need(opts, "sha256") });
-  writePrivate(out, buf);
-  return { out, ...ok, verified: true };
+  const buf = joinChunks(rest.map(p => readFileSync(p, "utf8"))), want = { bytes: need(opts, "bytes"), sha256: need(opts, "sha256") };
+  if (!isZip(buf)) { const ok = verifyRecording(buf, want); writePrivate(out, buf); return { out, ...ok, verified: true }; }
+  /* The stored file is a zip archive. It is checked against the line like any recording, then its one recording is unpacked in memory and
+     written into a new, empty folder under the name this command was given; no name from inside the archive is used. `out` in the result is
+     where the recording is. */
+  verifyBytes(buf, want);
+  if ([".", "..", ""].includes(basename(out))) throw new Error("--out must name a file");
+  const audio = unzipRecording(buf), folder = mkdtempSync(join(dirname(resolve(out)), "unpacked-")), path = join(folder, basename(out));
+  try { writePrivate(path, audio); } catch (err) { rmSync(folder, { recursive: true, force: true }); throw err; }
+  return { out: path, bytes: audio.length, sha256: sha256(audio), verified: true, archive: true };
 }
 
 function cmdTerms({ opts }) {

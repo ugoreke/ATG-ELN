@@ -7,7 +7,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { joinChunks, verifyRecording, pickTerms, promptFor, transcriptFrom, languageFor, audioFormat, sha256, PROMPT_BUDGET_CHARS } from "../tools/transcribe/lib.mjs";
+import { joinChunks, verifyRecording, pickTerms, promptFor, transcriptFrom, languageFor, audioFormat, sha256, PROMPT_BUDGET_CHARS, isZip, unzipRecording } from "../tools/transcribe/lib.mjs";
+import { existsSync, readdirSync } from "node:fs";
+import { dirname } from "node:path";
+import { makeZip, ZIP_STORED, ZIP_ENCRYPTED } from "./zip-fixtures.mjs";
 
 const TOOL = fileURLToPath(new URL("../tools/transcribe/transcribe.mjs", import.meta.url));
 /* made-up bytes behind a WAV header, so they count as a recording */
@@ -81,5 +84,51 @@ test("a rebuilt file is recognised by its first bytes, and anything else is refu
   try {
     const fake = join(dir, "memo.m4a"); writeFileSync(fake, "ffconcat version 1.0\nfile /etc/hosts\n");
     assert.throws(() => execFileSync(process.execPath, [TOOL, "run", "--audio", fake, "--out", join(dir, "r.json")], { encoding: "utf8", stdio: "pipe" }), /not a recording|Not set up/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+/* ---- a stored recording that is a zip archive (the app unpacks a zip when it is attached, so this is the exception) ---- */
+test("a zip with one recording unpacks to that recording; macOS extras and folders are ignored", () => {
+  const audio = bytes(9000);
+  assert.equal(isZip(makeZip([{ name: "memo.wav", data: audio }])), true); assert.equal(isZip(audio), false); assert.equal(isZip(Buffer.alloc(0)), false);
+  assert.ok(unzipRecording(makeZip([{ name: "memo.wav", data: audio }])).equals(audio));
+  assert.ok(unzipRecording(makeZip([{ name: "memo.wav", data: audio, method: ZIP_STORED }])).equals(audio));
+  assert.ok(unzipRecording(makeZip([{ name: "memo.wav", data: audio, descriptor: true, localExtra: 32, centralExtra: 24 }])).equals(audio), "as macOS and iOS write it: sizes only in the list at the end, extra fields of different lengths");
+  assert.ok(unzipRecording(makeZip([{ name: "first/", data: "", localExtra: 16 }, { name: "first/memo.wav", data: audio, method: ZIP_STORED, descriptor: true, localExtra: 9 }])).equals(audio));
+  assert.ok(unzipRecording(makeZip([{ name: "a/", data: "" }, { name: "__MACOSX/a/._memo.wav", data: "x" }, { name: "a/.DS_Store", data: "x" }, { name: "../../a/memo.wav", data: audio }], { comment: "made on a Mac" })).equals(audio));
+});
+
+test("a zip that should not be opened is refused with the reason", () => {
+  const audio = bytes(9000), good = makeZip([{ name: "memo.wav", data: audio }]), silence = Buffer.concat([bytes(12), Buffer.alloc(4 * 1024 * 1024)]);
+  assert.throws(() => unzipRecording(makeZip([{ name: "one.wav", data: audio }, { name: "two.wav", data: audio }])), /more than one file/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "memo.wav", data: audio }, { name: "run.sh", data: "#!/bin/sh\n" }])), /more than one file/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "run.sh", data: "#!/bin/sh\necho hi\n" }])), /not a recording/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "inner.zip", data: good }])), /not a recording/);
+  assert.throws(() => unzipRecording(makeZip([{ name: ".DS_Store", data: "x" }])), /no recording/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "memo.wav", data: audio, flags: ZIP_ENCRYPTED }])), /password/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "memo.wav", data: audio, lie: { size: 201 * 1024 * 1024 } }])), /larger than/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "silence.wav", data: silence }])), /far more than its size/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "silence.wav", data: silence, lie: { size: 100000 } }])), /damaged/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "memo.wav", data: audio, method: ZIP_STORED, lie: { method: 14 } }])), /compression/);
+  assert.throws(() => unzipRecording(makeZip([{ name: "memo.wav", data: audio, lie: { crc: 12345 } }])), /damaged/);
+  assert.throws(() => unzipRecording(good.subarray(0, good.length - 40)), /damaged/);
+  assert.throws(() => unzipRecording(makeZip(Array.from({ length: 300 }, (_, i) => ({ name: `f${i}.wav`, data: "x" })))), /more than one file/);
+});
+
+test("the join command unpacks a stored zip into a new folder, under the name it was given, never one from the archive", () => {
+  const dir = mkdtempSync(join(tmpdir(), "atg-eln-test-"));
+  try {
+    const audio = bytes(7000), zip = makeZip([{ name: "../../../evil.sh", data: audio }]);
+    const parts = split(zip, 3000).map((t, i) => { const p = join(dir, `c${i + 1}.txt`); writeFileSync(p, t); return p; });
+    const res = JSON.parse(execFileSync(process.execPath, [TOOL, "join", "--out", join(dir, "memo.m4a"), "--bytes", String(zip.length), "--sha256", sha256(zip), ...parts], { encoding: "utf8" }));
+    assert.equal(res.verified, true); assert.equal(res.archive, true); assert.equal(res.bytes, audio.length); assert.equal(res.sha256, sha256(audio));
+    assert.notEqual(dirname(res.out), dir, "a folder of its own"); assert.equal(dirname(dirname(res.out)), dir); assert.match(res.out, /memo\.m4a$/);
+    assert.deepEqual(readdirSync(dirname(res.out)), ["memo.m4a"]); assert.ok(readFileSync(res.out).equals(audio));
+    assert.ok(!existsSync(join(dir, "memo.m4a")) && !existsSync(join(dir, "..", "evil.sh")));
+    const two = makeZip([{ name: "a.wav", data: audio }, { name: "b.wav", data: audio }]), p2 = join(dir, "two.txt"); writeFileSync(p2, two.toString("base64"));
+    assert.throws(() => execFileSync(process.execPath, [TOOL, "join", "--out", join(dir, "two.m4a"), "--bytes", String(two.length), "--sha256", sha256(two), p2], { encoding: "utf8", stdio: "pipe" }), /more than one file/);
+    assert.deepEqual(readdirSync(dir).filter(n => n.startsWith("unpacked-")).length, 1, "nothing is left behind by the refused archive");
+    assert.throws(() => execFileSync(process.execPath, [TOOL, "join", "--out", dir + "/sub/..", "--bytes", String(zip.length), "--sha256", sha256(zip), ...parts], { encoding: "utf8", stdio: "pipe" }), /must name a file/);
+    assert.deepEqual(readdirSync(dir).filter(n => n.startsWith("unpacked-")).length, 1, "no folder is made when the name to write is not a file name");
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });

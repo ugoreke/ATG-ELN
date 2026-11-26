@@ -1562,7 +1562,7 @@ const MIB = 1024 * 1024, GIB = 1024 * MIB;
 const AUDIO_CHUNK_BYTES = 6 * MIB;          /* raw audio per stored file: 8 MiB as base64, well under the 20 MiB cap. Divisible by 3, so the chunks' text joins into valid base64. */
 const AUDIO_MAX_BYTES = 100 * MIB, AUDIO_MAX_CHUNKS = Math.ceil(100 * MIB / AUDIO_CHUNK_BYTES), CHUNK_TYPE = "text/plain", AUDIO_NAME_MAX = 120, MOOV_MAX_BYTES = 16 * MIB, MP4_EPOCH_S = 2082844800;
 const AUDIO_AT_MAX_AGE_DAYS = 30, CLOCK_SKEW_MS = 5 * 60 * 1000, DURATION_WAIT_MS = 4000, B64_SLICE = MIB;
-const AUDIO_KEEP_DAYS = 21, AUDIO_CHECK_DAYS = 3, ASK_TRANSCRIPT_CHARS = 60000, AUDIO_KEEP_MIN = 1, AUDIO_KEEP_MAX = 365, STORAGE_WARN = 0.85, HOUSEKEEP_DELAY_MS = 1200, TRANSCRIPT_FOLD_CHARS = 600;
+const AUDIO_KEEP_DAYS = 21, AUDIO_CHECK_DAYS = 3, ASK_TRANSCRIPT_CHARS = 60000, AUDIO_KEEP_MIN = AUDIO_KEEP_DAYS /* audio is never deleted at three weeks or younger, whatever is stored in settings */, AUDIO_KEEP_MAX = 365, STORAGE_WARN = 0.85, HOUSEKEEP_DELAY_MS = 1200, TRANSCRIPT_FOLD_CHARS = 600;
 const AUDIO_SESSION_FIELDS = ["transcript", "transcribedAt", "transcriber", "audioRemovedAt"];
 /* the type a recording is played back as comes from its first bytes, never from what the file calls itself */
 const AUDIO_KINDS = { mp4: "audio/mp4", wav: "audio/wav", mp3: "audio/mpeg", aac: "audio/aac", caf: "audio/x-caf", ogg: "audio/ogg", flac: "audio/flac", webm: "audio/webm", aiff: "audio/aiff", amr: "audio/amr" };
@@ -1645,6 +1645,88 @@ async function inspectRecording(file) {
   if (!info.sound) throw new Error(NOT_A_RECORDING);
   return { mime: AUDIO_KINDS.mp4, duration: info.duration, created: info.created };
 }
+/* ---------- a recording inside a zip archive ----------
+   A zip is unpacked here, when it is attached, so the line gets the recording's own length, type, size and SHA-256, the storage holds only audio,
+   and playback and transcription never meet an archive. An archive is somebody else's data: it must hold exactly one file apart from what macOS
+   adds (folders, __MACOSX, .DS_Store, ._ files); how far it may unpack is limited before a byte is unpacked (the size it states, and at most
+   ZIP_MAX_RATIO times its packed size) and again while it unpacks; its checksum must match; nothing in it is run; and of the name inside it only
+   the last part is kept, as the text shown on the line. What comes out is then checked like any chosen file (inspectRecording). */
+const ZIP_MAX_ENTRIES = 64, ZIP_MAX_RATIO = 100, ZIP_OVERHEAD_BYTES = MIB /* what an archive may be larger than the largest recording it could hold */, ZIP_EOCD = 0x06054b50, ZIP_CENTRAL = 0x02014b50, ZIP_LOCAL = 0x04034b50, EOCD_BYTES = 22, CENTRAL_BYTES = 46, LOCAL_BYTES = 30;
+const ZIP_COMMENT_MAX = 0xFFFF, ZIP_STORED = 0, ZIP_DEFLATED = 8, ZIP_ENCRYPTED_FLAGS = 0x41, ZIP64_MARK = 0xFFFFFFFF;
+const ZIP_DAMAGED = "That archive is damaged or isn't a zip file, so nothing was attached. Attach the recording itself.";
+const ZIP_MANY = "That archive holds more than one file, so nothing was attached. Zip one recording at a time, or attach the recordings themselves.";
+const ZIP_EMPTY = "That archive has no recording in it, so nothing was attached.";
+const NO_UNZIP = "This browser can't open zip archives, so nothing was attached. Attach the recording itself.";
+const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+const crc32 = u8 => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+const zipMagic = u8 => u8.length >= 4 && u8[0] === 0x50 && u8[1] === 0x4B && ((u8[2] === 3 && u8[3] === 4) || (u8[2] === 5 && u8[3] === 6) || (u8[2] === 7 && u8[3] === 8));
+/* a zip by its first bytes; a file only named .zip counts too (and is then reported as damaged), unless it is plainly a recording */
+async function isZipFile(file) {
+  const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  return zipMagic(head) || (/\.zip$/i.test(file.name || "") && !sniffAudio(head));
+}
+const zipExtra = e => { const parts = e.name.replace(/\\/g, "/").split("/"), base = parts[parts.length - 1]; return (base === "" && e.size === 0) || parts.includes("__MACOSX") || base === ".DS_Store" || base.startsWith("._"); };
+/* the name shown on the line: the last part of the name in the archive, reduced to letters, digits, spaces and . _ - ( ), since it is somebody else's text */
+const zipBaseName = name => (name.replace(/\\/g, "/").split("/").pop().replace(/[^\p{L}\p{N}._ ()-]/gu, "_").replace(/^[.\-\s]+/, "").trim() || "Recording").slice(0, AUDIO_NAME_MAX);
+/* the archive's own list of what it holds, read from its end; every offset is checked against the bytes that are really there */
+async function zipEntries(file) {
+  const bad = () => new Error(ZIP_DAMAGED);
+  const tailFrom = Math.max(0, file.size - EOCD_BYTES - ZIP_COMMENT_MAX), tail = new DataView(await file.slice(tailFrom).arrayBuffer());
+  let end = -1;
+  for (let i = tail.byteLength - EOCD_BYTES; i >= 0; i--) if (tail.getUint32(i, true) === ZIP_EOCD) { end = i; break; }
+  if (end < 0) throw bad();
+  const count = tail.getUint16(end + 10, true), size = tail.getUint32(end + 12, true), start = tail.getUint32(end + 16, true);
+  if (tail.getUint16(end + 4, true) || tail.getUint16(end + 6, true) || tail.getUint16(end + 8, true) !== count) throw bad();   /* split over several files */
+  if (count > ZIP_MAX_ENTRIES) throw new Error(ZIP_MANY);
+  if (size === ZIP64_MARK || start === ZIP64_MARK || start + size > tailFrom + end) throw bad();
+  const dir = new DataView(await file.slice(start, start + size).arrayBuffer()), entries = [];
+  for (let p = 0, i = 0; i < count; i++) {
+    if (p + CENTRAL_BYTES > dir.byteLength || dir.getUint32(p, true) !== ZIP_CENTRAL) throw bad();
+    const nameLen = dir.getUint16(p + 28, true), next = p + CENTRAL_BYTES + nameLen + dir.getUint16(p + 30, true) + dir.getUint16(p + 32, true);
+    if (next > dir.byteLength) throw bad();
+    entries.push({ flags: dir.getUint16(p + 8, true), method: dir.getUint16(p + 10, true), crc: dir.getUint32(p + 16, true), packed: dir.getUint32(p + 20, true), size: dir.getUint32(p + 24, true),
+      offset: dir.getUint32(p + 42, true), name: new TextDecoder().decode(new Uint8Array(dir.buffer, p + CENTRAL_BYTES, nameLen)) });
+    p = next;
+  }
+  return { entries, dirStart: start };
+}
+/* unpacks at most `limit` bytes; anything more, or a stream that doesn't unpack, is a damaged archive */
+async function inflateCapped(blob, limit) {
+  if (typeof DecompressionStream !== "function" || typeof blob.stream !== "function") throw new Error(NO_UNZIP);
+  let unpack;
+  try { unpack = new DecompressionStream("deflate-raw"); } catch (_) { throw new Error(NO_UNZIP); }   /* an older Safari has the class but not this format */
+  try {
+    const out = new Uint8Array(limit), reader = blob.stream().pipeThrough(unpack).getReader();
+    let n = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return out.subarray(0, n);
+      if (n + value.length > limit) { reader.cancel().catch(() => {}); throw new Error("more than stated"); }
+      out.set(value, n); n += value.length;
+    }
+  } catch (_) { throw new Error(ZIP_DAMAGED); }
+}
+/* The one recording in a zip, as a File named after it. Throws with the reason to show when the archive is not exactly that. */
+async function unzipRecording(file) {
+  const tooBig = what => new Error(`${what} is larger than ${fmtBytes(AUDIO_MAX_BYTES)}, the most the app takes. Split the recording and attach the parts.`);
+  if (file.size > AUDIO_MAX_BYTES + ZIP_OVERHEAD_BYTES) throw tooBig("That archive");
+  const { entries, dirStart } = await zipEntries(file), files = entries.filter(e => !zipExtra(e));
+  if (!files.length) throw new Error(ZIP_EMPTY);
+  if (files.length > 1) throw new Error(ZIP_MANY);
+  const [e] = files;
+  if (e.flags & ZIP_ENCRYPTED_FLAGS) throw new Error("That archive is password-protected, so the app can't open it and nothing was attached. Attach the recording itself.");
+  if (e.method !== ZIP_STORED && e.method !== ZIP_DEFLATED) throw new Error("That archive uses a compression the app can't read, so nothing was attached. Attach the recording itself.");
+  if (e.size > AUDIO_MAX_BYTES) throw tooBig("The recording in that archive");
+  if (!e.size || !e.packed) throw new Error(ZIP_EMPTY);
+  if (e.size / e.packed > ZIP_MAX_RATIO) throw new Error("That archive unpacks to far more than its size, which a recording never does, so it wasn't opened and nothing was attached.");
+  const head = new DataView(await file.slice(e.offset, e.offset + LOCAL_BYTES).arrayBuffer());
+  if (e.offset + LOCAL_BYTES > dirStart || head.byteLength < LOCAL_BYTES || head.getUint32(0, true) !== ZIP_LOCAL) throw new Error(ZIP_DAMAGED);
+  const from = e.offset + LOCAL_BYTES + head.getUint16(26, true) + head.getUint16(28, true);
+  if (from + e.packed > dirStart || (e.method === ZIP_STORED && e.packed !== e.size)) throw new Error(ZIP_DAMAGED);
+  const packed = file.slice(from, from + e.packed), bytes = e.method === ZIP_STORED ? new Uint8Array(await packed.arrayBuffer()) : await inflateCapped(packed, e.size);
+  if (bytes.length !== e.size || crc32(bytes) !== e.crc) throw new Error(ZIP_DAMAGED);
+  return new File([bytes], zipBaseName(e.name), { lastModified: file.lastModified || 0 });
+}
 /* The line's time: when the recording says it was made, else the file's own date, else now. A time in the future or long past is not believed. */
 function recordingTime(created, modified, now) {
   const ok = ms => ms > now - AUDIO_AT_MAX_AGE_DAYS * MS_PER_DAY && ms <= now + CLOCK_SKEW_MS;
@@ -1671,9 +1753,13 @@ const findBlock = (entryId, bid) => state.entries.get(entryId)?.blocks.find(b =>
 function paintMemo(entryId, bid) { const k = findBlock(entryId, bid), n = state.openId === entryId ? lineNode(bid) : null; if (k && n) updateLine(n, k); }
 /* every file chosen together goes where the user was when they chose, even if they move on while the files are being checked */
 async function attachRecordings(files) { const entryId = state.openId; closeComposer(); for (const f of files) await attachRecording(f, entryId); }
-async function attachRecording(file, entryId) {
+async function attachRecording(chosen, entryId) {
   if (!state.assets) { showProblem("Attaching a recording needs edit access to this page."); return; }
-  let info; try { info = await inspectRecording(file); } catch (err) { showProblem(errText(err)); return; }
+  let file = chosen, info;
+  try {
+    if (await isZipFile(chosen)) file = await unzipRecording(chosen);
+    info = await inspectRecording(file);
+  } catch (err) { showProblem(file === chosen ? errText(err) : errText(err).replace(/^That (file|recording)\b/, "The file in that archive")); return; }
   const e = state.entries.get(entryId); if (!e) { showProblem("Nothing is open to attach the recording to, so it wasn't attached."); return; }
   const now = Date.now();
   const b = { id: uid(), type: "audio", at: new Date(recordingTime(info.created, file.lastModified || 0, now)).toISOString(), attachedAt: new Date(now).toISOString(),

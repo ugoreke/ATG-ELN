@@ -4,6 +4,7 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { open, close, tab, openBook, IPHONE, IPAD_LANDSCAPE, VIEWPORTS } from "./helpers.mjs";
+import { makeZip, ZIP_STORED, ZIP_ENCRYPTED } from "./zip-fixtures.mjs";
 
 after(close);
 
@@ -252,9 +253,12 @@ test("files chosen together are attached where they were chosen, even if another
 });
 
 test("clean-up follows Settings: it can be turned off and the number of days changed", async () => {
-  let m = storedMemo("m", m4a(), { at: daysAgo(12), attachedAt: daysAgo(12), transcript: "Thawed a vial.", transcribedAt: daysAgo(11) });
-  let r = await cleanCase([m.block], m.assets, { settings: { audioKeepDays: 10 } });
-  assert.deepEqual((await store(r.page, "logs/daily")).blocks[0].chunks, [], "12 days old with a 10-day rule");
+  let m = storedMemo("m", m4a(), { at: daysAgo(32), attachedAt: daysAgo(32), transcript: "Thawed a vial.", transcribedAt: daysAgo(31) });
+  let r = await cleanCase([m.block], m.assets, { settings: { audioKeepDays: 30 } });
+  assert.deepEqual((await store(r.page, "logs/daily")).blocks[0].chunks, [], "32 days old with a 30-day rule");
+  m = storedMemo("m", m4a(), { at: daysAgo(25), attachedAt: daysAgo(25), transcript: "Thawed a vial.", transcribedAt: daysAgo(24) });
+  r = await cleanCase([m.block], m.assets, { settings: { audioKeepDays: 30 } });
+  assert.deepEqual((await store(r.page, "logs/daily")).blocks[0].chunks, m.block.chunks, "25 days old with a 30-day rule is kept");
   m = storedMemo("m", m4a(), { at: daysAgo(60), attachedAt: daysAgo(60), transcript: "Thawed a vial.", transcribedAt: daysAgo(59) });
   r = await cleanCase([m.block], m.assets, { settings: { audioCleanup: false } });
   assert.deepEqual((await store(r.page, "logs/daily")).blocks[0].chunks, m.block.chunks, "kept when clean-up is off");
@@ -266,6 +270,137 @@ test("clean-up follows Settings: it can be turned off and the number of days cha
   const s = await store(r.page, "config/settings");
   assert.equal(s.audioKeepDays, 45); assert.equal(s.audioCleanup, true);
   assert.deepEqual(r.errors, []);
+});
+
+test("audio is never deleted at three weeks or younger, whatever the settings say: fewer than 21 days can't be chosen, and a stored smaller number counts as 21", async () => {
+  const m = storedMemo("m", m4a(), { at: daysAgo(12), attachedAt: daysAgo(12), transcript: "Thawed a vial.", transcribedAt: daysAgo(11) });
+  const edge = storedMemo("edge", m4a(), { at: daysAgo(20), attachedAt: daysAgo(20), transcript: "Fed the cells.", transcribedAt: daysAgo(19) });
+  const old = storedMemo("old", m4a(), { at: daysAgo(23), attachedAt: daysAgo(23), transcript: "Split 1:6.", transcribedAt: daysAgo(22) });
+  for (const days of [1, 10, 20, 0, -5, "3"]) {
+    const { page, errors } = await cleanCase([m.block, edge.block, old.block], { ...m.assets, ...edge.assets, ...old.assets }, { settings: { audioKeepDays: days } });
+    const blocks = (await store(page, "logs/daily")).blocks, by = id => blocks.find(b => b.id === id);
+    assert.deepEqual(by("m").chunks, m.block.chunks, `12 days old, setting ${days}`); assert.deepEqual(by("edge").chunks, edge.block.chunks, `20 days old, setting ${days}`);
+    assert.deepEqual(by("old").chunks, [], `23 days old, setting ${days}`);
+    assert.deepEqual((await page.evaluate(() => window.__assetDeletes)).sort(), [...old.block.chunks].sort());
+    assert.deepEqual(errors, []);
+  }
+  const { page, errors } = await cleanCase([m.block], m.assets);
+  await page.locator("#openSettings").click();
+  assert.equal(await page.locator("#sAudioDays").getAttribute("min"), "21");
+  await page.locator("#sAudioDays").fill("7"); await page.locator("#sAudioDays").blur(); await page.waitForTimeout(150);
+  assert.equal(await page.locator("#sAudioDays").inputValue(), "21", "the box goes back to what is in force");
+  assert.ok(!((await store(page, "config/settings")) || {}).audioKeepDays, "7 days is not saved");
+  assert.deepEqual(errors, []);
+});
+
+/* ---- a recording inside a zip archive ---- */
+const waitMemo = page => page.waitForFunction(() => /Waiting for transcription/.test(document.querySelector("#lines .line.memo")?.innerText || ""), null, { timeout: 15000 });
+const pickZip = (page, name, buffer) => pick(page, name, buffer, "application/zip");
+
+test("a zip holding one recording is unpacked when attached: the line and the storage hold the audio, not the archive", async () => {
+  const created = new Date(); created.setHours(9, 40, 0, 0); if (created > new Date()) created.setDate(created.getDate() - 1);
+  const audio = m4a({ created, payload: 40000 }), zip = makeZip([{ name: "Audio Recording 7.m4a", data: audio }]);
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  await pickZip(page, "Archive.zip", zip);
+  await waitMemo(page); await page.waitForTimeout(200);
+  const [b] = (await store(page, "logs/daily")).blocks;
+  assert.equal(b.fileName, "Audio Recording 7.m4a"); assert.equal(b.mime, "audio/mp4"); assert.equal(b.bytes, audio.length); assert.equal(b.sha256, sha(audio));
+  assert.equal(Math.round(b.duration * 10), 64); assert.equal(new Date(b.at).getTime(), created.getTime());
+  assert.equal(sha(await storedAudio(page)), sha(audio), "what is stored decodes to the recording itself");
+  assert.deepEqual(await page.evaluate(() => window.__assetUploads), [{ type: "text/plain", size: Math.ceil(audio.length / 3) * 4 }]);
+  assert.match(await memo(page).innerText(), /Audio Recording 7\.m4a/); assert.match(await memo(page).innerText(), /0:06/);
+  assert.deepEqual(errors, []);
+});
+
+test("a zip written the way macOS and iOS write it is read: sizes only in the list at the end, extra fields of different lengths in the two headers", async () => {
+  const audio = m4a({ payload: 40000 });
+  const zip = makeZip([{ name: "Memos/", data: "", localExtra: 16, centralExtra: 12 }, { name: "Memos/memo.m4a", data: audio, descriptor: true, localExtra: 32, centralExtra: 24 }, { name: "__MACOSX/Memos/._memo.m4a", data: "x", descriptor: true }]);
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  await pickZip(page, "Memos.zip", zip);
+  await waitMemo(page); await page.waitForTimeout(200);
+  const [b] = (await store(page, "logs/daily")).blocks;
+  assert.equal(b.fileName, "memo.m4a"); assert.equal(b.bytes, audio.length); assert.equal(b.sha256, sha(audio));
+  assert.equal(sha(await storedAudio(page)), sha(audio));
+  assert.deepEqual(errors, []);
+});
+
+test("on a browser that can't unpack, a zip is refused with that reason, not called damaged", async () => {
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  await page.evaluate(() => { const Real = window.DecompressionStream; window.DecompressionStream = function (format) { if (format === "deflate-raw") throw new TypeError("Unsupported compression format"); return new Real(format); }; });
+  await pickZip(page, "Archive.zip", makeZip([{ name: "memo.m4a", data: m4a() }]));
+  await page.waitForTimeout(400);
+  assert.match(await banner(page), /can't open zip archives/); assert.equal(await memo(page).count(), 0);
+  assert.deepEqual(await page.evaluate(() => window.__assetUploads), []);
+  assert.deepEqual(errors, []);
+});
+
+test("a zip is known by its content, and one stored without compression works too", async () => {
+  const audio = wav(16000), zip = makeZip([{ name: "memo.wav", data: audio, method: ZIP_STORED }]);
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  await pick(page, "Recording", zip, "");   /* no .zip in the name, no type */
+  await waitMemo(page); await page.waitForTimeout(200);
+  const [b] = (await store(page, "logs/daily")).blocks;
+  assert.equal(b.fileName, "memo.wav"); assert.equal(b.mime, "audio/wav"); assert.equal(b.sha256, sha(audio));
+  assert.deepEqual(errors, []);
+});
+
+test("macOS extras and folders in a zip are ignored, and a path inside the archive is never used: only the file's own name is shown", async () => {
+  const audio = m4a(), junk = Buffer.from("Mac OS X        resource fork");
+  const zip = makeZip([{ name: "Recordings/", data: "" }, { name: "__MACOSX/", data: "" }, { name: "__MACOSX/Recordings/._memo.m4a", data: junk }, { name: ".DS_Store", data: junk },
+    { name: "Recordings/.DS_Store", data: junk }, { name: "Recordings/._memo.m4a", data: junk }, { name: "../../Recordings/-$(touch x);<b>memo.m4a", data: audio }]);
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  await pickZip(page, "Recordings.zip", zip);
+  await waitMemo(page); await page.waitForTimeout(200);
+  const [b] = (await store(page, "logs/daily")).blocks;
+  assert.equal(b.fileName, "_(touch x)__b_memo.m4a", "reduced to plain characters, with no path, leading dash or dot"); assert.equal(b.sha256, sha(audio)); assert.equal(b.bytes, audio.length);
+  assert.equal(await memo(page, ".vm-name b").count(), 0, "the name is shown as text");
+  assert.deepEqual(errors, []);
+});
+
+test("a zip the app should not open is refused with a visible reason, and nothing is added or uploaded", async () => {
+  const audio = m4a(), good = makeZip([{ name: "memo.m4a", data: audio }]), silence = wav(4 * MIB);
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  const refused = async (label, buf, why, name = "Archive.zip") => {
+    await page.evaluate(() => { document.querySelector("#saveBanner").textContent = ""; });
+    await pickZip(page, name, buf);
+    await page.waitForFunction(() => document.querySelector("#saveBanner").innerText.trim() !== "", null, { timeout: 15000 }).catch(() => {});
+    assert.match(await banner(page), why, label); assert.equal(await memo(page).count(), 0, label);
+  };
+  await refused("two recordings", makeZip([{ name: "one.m4a", data: audio }, { name: "two.m4a", data: audio }]), /more than one file/);
+  await refused("a recording and a document", makeZip([{ name: "memo.m4a", data: audio }, { name: "notes.txt", data: "hello" }]), /more than one file/);
+  await refused("not audio", makeZip([{ name: "memo.m4a", data: "<html><script>alert(1)</script></html>" }]), /isn't a recording/);
+  await refused("a script", makeZip([{ name: "run.sh", data: "#!/bin/sh\necho hi\n" }]), /isn't a recording/);
+  await refused("a video", makeZip([{ name: "clip.mp4", data: m4a({ handler: "vide" }) }]), /video/);
+  await refused("a zip in a zip", makeZip([{ name: "inner.zip", data: good }]), /isn't a recording/);
+  await refused("only macOS extras", makeZip([{ name: "__MACOSX/._x", data: "x" }, { name: ".DS_Store", data: "x" }]), /no recording in it/);
+  await refused("password-protected", makeZip([{ name: "memo.m4a", data: audio, flags: ZIP_ENCRYPTED }]), /password/);
+  await refused("says it unpacks to more than the app takes", makeZip([{ name: "memo.m4a", data: audio, lie: { size: 101 * MIB } }]), /larger than 100 MB/);
+  await refused("unpacks to far more than its size", makeZip([{ name: "silence.wav", data: silence }]), /far more than its size/);
+  await refused("unpacks to more than it says", makeZip([{ name: "silence.wav", data: silence, lie: { size: 100000 } }]), /damaged/);
+  await refused("unknown compression", makeZip([{ name: "memo.m4a", data: audio, method: ZIP_STORED, lie: { method: 14 } }]), /compression the app can't read/);
+  await refused("cut off", good.subarray(0, good.length - 40), /damaged/);
+  const flipped = Buffer.from(makeZip([{ name: "memo.m4a", data: audio, method: ZIP_STORED }])); flipped[80] ^= 0xFF;
+  await refused("a changed byte", flipped, /damaged/);
+  await refused("wrong checksum", makeZip([{ name: "memo.m4a", data: audio, lie: { crc: 12345 } }]), /damaged/);
+  await refused("not a zip at all", Buffer.from("this is only named like an archive"), /damaged|isn't a zip/, "notes.zip");
+  await refused("too many files", makeZip(Array.from({ length: 300 }, (_, i) => ({ name: `f${i}.m4a`, data: "x" }))), /more than one file/);
+  assert.deepEqual(await page.evaluate(() => window.__assetUploads), []);
+  assert.ok(!(await store(page, "logs/daily")));
+  assert.deepEqual(errors, []);
+});
+
+test("a recording that came in a zip is cleaned up like any other: only with a transcript and after three weeks", async () => {
+  const audio = m4a(), zip = makeZip([{ name: "memo.m4a", data: audio }]);
+  const { page, errors } = await open(IPAD_LANDSCAPE);
+  await pickZip(page, "Archive.zip", zip);
+  await waitMemo(page); await page.waitForTimeout(200);
+  const [b] = (await store(page, "logs/daily")).blocks, assets = await page.evaluate(() => Object.fromEntries([...window.__assets].map(([id, a]) => [id, a.text])));
+  const run = async extra => { const r = await cleanCase([{ ...b, ...extra }], assets); return { blocks: (await store(r.page, "logs/daily")).blocks, deletes: await r.page.evaluate(() => window.__assetDeletes), errors: r.errors }; };
+  let r = await run({ attachedAt: daysAgo(30) });
+  assert.deepEqual(r.blocks[0].chunks, b.chunks, "no transcript: kept"); assert.deepEqual(r.deletes, []);
+  r = await run({ attachedAt: daysAgo(30), transcript: "Counted the cells.", transcribedAt: daysAgo(10) });
+  assert.deepEqual(r.blocks[0].chunks, []); assert.deepEqual(r.deletes, b.chunks); assert.equal(r.blocks[0].transcript, "Counted the cells."); assert.equal(r.blocks[0].fileName, "memo.m4a");
+  assert.deepEqual([...errors, ...r.errors], []);
 });
 
 test("chunks shared with a line that still needs them are not deleted", async () => {

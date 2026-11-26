@@ -1,5 +1,6 @@
 // Pure helpers for the transcription tool: no files, no programs, so they can be tested on their own.
 import { createHash } from "node:crypto";
+import { inflateRawSync } from "node:zlib";
 
 export const sha256 = buf => createHash("sha256").update(buf).digest("hex");
 
@@ -33,14 +34,74 @@ export function audioFormat(buf) {
 }
 
 /* The line says how many bytes the recording has and what its SHA-256 is; a rebuilt file that differs must not be transcribed. */
-export function verifyRecording(buf, { bytes, sha256: want }) {
+export function verifyBytes(buf, { bytes, sha256: want }) {
   if (!/^[0-9a-f]{64}$/.test(String(want || ""))) throw new Error("the line has no valid SHA-256 to check against");
   if (buf.length > MAX_RECORDING_BYTES) throw new Error("the chunks give more than the largest recording the app stores");
   if (Number(bytes) !== buf.length) throw new Error(`size differs: the line says ${bytes} bytes, the chunks give ${buf.length}`);
   const got = sha256(buf);
   if (got !== want) throw new Error(`SHA-256 differs: the line says ${want}, the chunks give ${got}`);
-  if (!audioFormat(buf)) throw new Error("the chunks do not rebuild into an audio file");
   return { bytes: buf.length, sha256: got };
+}
+export function verifyRecording(buf, want) {
+  const ok = verifyBytes(buf, want);
+  if (!audioFormat(buf)) throw new Error("the chunks do not rebuild into an audio file");
+  return ok;
+}
+
+/* ---- a recording inside a zip archive ----
+   The app unpacks a zip when it is attached and stores the audio itself, so a stored zip is the exception; it is handled here all the same.
+   An archive is somebody else's data. It must hold exactly one file apart from what macOS adds (folders, __MACOSX, .DS_Store, ._ files); that
+   file must be a recording by its first bytes; nothing in the archive is run; no name or path from inside it is used for anything; and how far
+   it may unpack is limited before a byte is unpacked (the size it states, at most ZIP_MAX_RATIO times its packed size) and while it unpacks. */
+export const ZIP_MAX_ENTRIES = 64, ZIP_MAX_RATIO = 100;
+const ZIP_EOCD = 0x06054b50, ZIP_CENTRAL = 0x02014b50, ZIP_LOCAL = 0x04034b50, EOCD_BYTES = 22, CENTRAL_BYTES = 46, LOCAL_BYTES = 30, ZIP_COMMENT_MAX = 0xFFFF;
+const ZIP_STORED = 0, ZIP_DEFLATED = 8, ZIP_ENCRYPTED_FLAGS = 0x41, ZIP64_MARK = 0xFFFFFFFF;
+const ZIP_DAMAGED = "the archive is damaged or is not a zip file", ZIP_MANY = "the archive holds more than one file; it must hold one recording";
+const CRC_TABLE = Uint32Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+export const crc32 = buf => { let c = 0xFFFFFFFF; for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+export const isZip = buf => buf.length >= 4 && buf[0] === 0x50 && buf[1] === 0x4B && ((buf[2] === 3 && buf[3] === 4) || (buf[2] === 5 && buf[3] === 6) || (buf[2] === 7 && buf[3] === 8));
+/* what macOS and Finder add to an archive, which is not the user's file */
+const zipExtra = e => { const parts = e.name.replace(/\\/g, "/").split("/"), base = parts.at(-1); return (base === "" && e.size === 0) || parts.includes("__MACOSX") || base === ".DS_Store" || base.startsWith("._"); };
+/* the archive's own list of what it holds, read from its end; every offset is checked against the bytes that are really there */
+function zipEntries(buf) {
+  const bad = () => new Error(ZIP_DAMAGED);
+  let end = -1;
+  for (let i = buf.length - EOCD_BYTES; i >= 0 && i >= buf.length - EOCD_BYTES - ZIP_COMMENT_MAX; i--) if (buf.readUInt32LE(i) === ZIP_EOCD) { end = i; break; }
+  if (end < 0) throw bad();
+  const count = buf.readUInt16LE(end + 10), size = buf.readUInt32LE(end + 12), start = buf.readUInt32LE(end + 16);
+  if (buf.readUInt16LE(end + 4) || buf.readUInt16LE(end + 6) || buf.readUInt16LE(end + 8) !== count) throw bad();   /* split over several files */
+  if (count > ZIP_MAX_ENTRIES) throw new Error(ZIP_MANY);
+  if (size === ZIP64_MARK || start === ZIP64_MARK || start + size > end) throw bad();
+  const entries = [];
+  for (let p = start, i = 0; i < count; i++) {
+    if (p + CENTRAL_BYTES > start + size || buf.readUInt32LE(p) !== ZIP_CENTRAL) throw bad();
+    const nameLen = buf.readUInt16LE(p + 28), next = p + CENTRAL_BYTES + nameLen + buf.readUInt16LE(p + 30) + buf.readUInt16LE(p + 32);
+    if (next > start + size) throw bad();
+    entries.push({ flags: buf.readUInt16LE(p + 8), method: buf.readUInt16LE(p + 10), crc: buf.readUInt32LE(p + 16), packed: buf.readUInt32LE(p + 20), size: buf.readUInt32LE(p + 24),
+      offset: buf.readUInt32LE(p + 42), name: buf.subarray(p + CENTRAL_BYTES, p + CENTRAL_BYTES + nameLen).toString("utf8") });
+    p = next;
+  }
+  return { entries, dirStart: start };
+}
+/* The one recording in a zip, as bytes. Throws with the reason when the archive is not exactly that. */
+export function unzipRecording(buf, { maxBytes = MAX_RECORDING_BYTES } = {}) {
+  const { entries, dirStart } = zipEntries(buf), files = entries.filter(e => !zipExtra(e));
+  if (!files.length) throw new Error("the archive has no recording in it");
+  if (files.length > 1) throw new Error(ZIP_MANY);
+  const [e] = files;
+  if (e.flags & ZIP_ENCRYPTED_FLAGS) throw new Error("the archive is password-protected, so it was not opened");
+  if (e.method !== ZIP_STORED && e.method !== ZIP_DEFLATED) throw new Error("the archive uses a compression this tool does not read");
+  if (e.size > maxBytes) throw new Error("the file in the archive is larger than the largest recording the app stores");
+  if (!e.size || !e.packed) throw new Error("the archive has no recording in it");
+  if (e.size / e.packed > ZIP_MAX_RATIO) throw new Error("the archive unpacks to far more than its size, which a recording never does, so it was not opened");
+  if (e.offset + LOCAL_BYTES > dirStart || buf.readUInt32LE(e.offset) !== ZIP_LOCAL) throw new Error(ZIP_DAMAGED);
+  const from = e.offset + LOCAL_BYTES + buf.readUInt16LE(e.offset + 26) + buf.readUInt16LE(e.offset + 28), packed = buf.subarray(from, from + e.packed);
+  if (from + e.packed > dirStart || (e.method === ZIP_STORED && e.packed !== e.size)) throw new Error(ZIP_DAMAGED);
+  let out;
+  try { out = e.method === ZIP_STORED ? Buffer.from(packed) : inflateRawSync(packed, { maxOutputLength: e.size }); } catch (_) { throw new Error(ZIP_DAMAGED); }   /* stops as soon as it would pass the stated size */
+  if (out.length !== e.size || crc32(out) !== e.crc) throw new Error(ZIP_DAMAGED);
+  if (!audioFormat(out)) throw new Error("the file in the archive is not a recording this tool reads");
+  return out;
 }
 
 /* Whisper reads a prompt of at most about 224 tokens, far less than a lab vocabulary. So the prompt carries the terms most likely to be
