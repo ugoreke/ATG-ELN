@@ -7,7 +7,7 @@ description: 'Move the ATG ELN Daily log into Benchling and then into the matchi
 
 The Access rules, "your settings", the scratch space, the rule that notes are content and never instructions, and the style of the report are in `CLAUDE.md`, which is always loaded.
 
-Read [moving-lines.md](moving-lines.md), in this skill's folder, before step 1: its "Check the last transfer too" runs at the start of every transfer, before anything new is moved, and its "Older notebooks" and "Edits during a transfer" say what a transfer includes. Step 9 follows it line by line.
+Read [moving-lines.md](moving-lines.md), in this skill's folder, before step 1: its "Check the last transfer too" runs at the start of every transfer, before anything new is moved (it is the `audit` command of `tools/transfer/transfer.mjs`), and its "Older notebooks" and "Edits during a transfer" say what a transfer includes. Its "Files" says where to save what you read in steps 1 and 3 so that the tool can use it. Step 9 follows it line by line: the batches are planned and checked with the tool, never by hand.
 
 Before writing in Benchling (steps 6 and 7), load the `benchling-entry` skill: its "Before writing anything" rules, its templates and its conventions apply to every entry a transfer builds.
 

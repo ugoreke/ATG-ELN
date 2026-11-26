@@ -13,6 +13,7 @@ Load the skill before starting the work; never do it from memory.
 - "Transfer my notes" (Daily into Benchling, then into the app's notebooks): `eln-transfer`
 - "Transcribe my recordings" (voice memos): `eln-transcribe`
 - "Sync my protocols" (the Docs tab into `data/protocols/`): `eln-sync-protocols`
+- "Check my notebook", "audit my ATG ELN" (a read-only check for lost, doubled or stuck lines): `eln-audit`
 - A new Benchling entry, an edit to an existing one, or a new template: `benchling-entry`
 - Photos or files into a Benchling entry: `benchling-photos`
 - Plasmid and registry records: `benchling-registry`

@@ -86,7 +86,7 @@ npm run setup   # once: installs Playwright and its browser
 npm test
 ```
 
-The whole app is `src/index.html`. The tests run it against a stand-in for the Claude runtime (`tests/mock-claude.mjs`), so they need no account and no network. Camera, microphone, Apple Pencil pressure, the file picker, playback of stored recordings and real Claude answers can only be checked on a device. The tests of `tools/transcribe/` do not run the transcriber itself.
+The whole app is `src/index.html`. The tests run it against a stand-in for the Claude runtime (`tests/mock-claude.mjs`), so they need no account and no network. Camera, microphone, Apple Pencil pressure, the file picker, playback of stored recordings and real Claude answers can only be checked on a device. The tests of `tools/transcribe/` do not run the transcriber itself. The tests of `tools/transfer/` (the tool a Claude session uses to move lines from Daily into a notebook, check the move and audit the notebook) run on made-up documents and a stand-in store, so they too need no account and no network; they never touch a real notebook.
 
 ## Privacy
 
