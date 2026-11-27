@@ -14,6 +14,7 @@ Load the skill before starting the work; never do it from memory.
 - "Transcribe my recordings" (voice memos): `eln-transcribe`
 - "Sync my protocols" (the Docs tab into `data/protocols/`): `eln-sync-protocols`
 - "Check my notebook", "audit my ATG ELN" (a read-only check for lost, doubled or stuck lines): `eln-audit`
+- "Back up my notebook", "restore from backup", "what changed since the last backup" (the whole database into `backups/`, and a checked restore): `eln-backup`
 - A new Benchling entry, an edit to an existing one, or a new template: `benchling-entry`
 - Photos or files into a Benchling entry: `benchling-photos`
 - Plasmid and registry records: `benchling-registry`

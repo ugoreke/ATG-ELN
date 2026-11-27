@@ -79,6 +79,17 @@ Things to know:
 - The app stores a recording as text, in chunks, inside your artifact (1 GB and 5,000 files in all; Settings shows how much is used). Once a recording has a transcript and is older than 21 days the app deletes its audio and keeps the line and transcript (a transcript that just arrived keeps its audio three more days, so you can check it against the recording). A recording without a transcript is never deleted automatically. In Settings you can keep audio longer (21 days is the shortest) or turn this off.
 - On a shared Mac, each person signs in to their own Claude account; a session only ever reads and writes that person's notebook.
 
+## Backing up
+
+Your notebook lives only in your artifact's database. Open a Claude Code session in this folder and say **"Back up my notebook."** (the `eln-backup` skill).
+
+- **What it copies:** every document (Daily, notebooks, meetings, to-dos, protocols, vocabulary, settings) and every stored file (photos, handwriting, the chunks of recordings, attached PDFs). It only reads; nothing in the app changes.
+- **Where:** `backups/` in this folder, which is git-ignored: one dated folder per run with the documents and a `manifest.json` (every document and file with its size and SHA-256), and one shared `assets/` folder where each stored file is kept once. A later run fetches only files it does not have yet, and an unchanged document takes no new space. To keep backups somewhere else, such as a synced or external folder, add a line `- Backup folder: <path>` under "My settings" in `CLAUDE.local.md`.
+- **Checked:** a backup counts as complete only when every listed document was saved, every stored file matches the size and SHA-256 the store reports, and every recording rebuilds to the SHA-256 the app stored for it. An incomplete backup says so in its manifest and is never built on.
+- **Nothing is deleted automatically.** Each run reports the total size; removing old dated folders is your decision (never remove `assets/`).
+- **"What changed since the last backup?"** compares two backups and lists the documents and lines that were added, changed, moved or lost.
+- **Restoring** ("restore from backup") puts back lines or documents that are gone, one document at a time, after showing you what it would do and asking. It never overwrites or doubles a line. **The restore is tested on made-up data and a stand-in database only (`tests/backup-tool.test.mjs`); it has not been run against a real notebook.** A deleted photo or recording cannot be put back by a session: the line comes back, and the file is in `backups/assets/` for you to attach again in the app.
+
 ## Working on it
 
 ```bash

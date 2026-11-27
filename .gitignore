@@ -24,6 +24,9 @@ CLAUDE.local.md
 scratch/*
 !scratch/README.md
 
+# backups of the notebook (the eln-backup skill): the whole database, never committed
+backups/
+
 # images: only the README demo is tracked
 *.png
 !demo/*.png
