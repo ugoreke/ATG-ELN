@@ -88,6 +88,8 @@ npm test
 
 The whole app is `src/index.html`. The tests run it against a stand-in for the Claude runtime (`tests/mock-claude.mjs`), so they need no account and no network. Camera, microphone, Apple Pencil pressure, the file picker, playback of stored recordings and real Claude answers can only be checked on a device. The tests of `tools/transcribe/` do not run the transcriber itself. The tests of `tools/transfer/` (the tool a Claude session uses to move lines from Daily into a notebook, check the move and audit the notebook) run on made-up documents and a stand-in store, so they too need no account and no network; they never touch a real notebook.
 
+Two Claude Code hooks are registered in `.claude/settings.json` (scripts in `tools/hooks/`, Node only): one stops a commit that would include private paths or private terms, the other runs `npm test` when a session that changed `src/`, `tests/` or `tools/` stops. To have your own names and ids checked, list them one per line in `.claude/local/private-terms.txt`, which is git-ignored; without that file only paths are checked. The hooks see only what a Claude Code session runs, not a commit made in your own terminal.
+
 ## Privacy
 
 This repository holds the app, its tests, the transcription tool, a vocabulary list, and the skills and project instructions for Claude sessions. It contains no notes, no protocols, no recordings or transcripts and nobody's personal settings.

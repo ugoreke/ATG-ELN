@@ -53,3 +53,13 @@ If `CLAUDE.local.md` does not exist or lacks a "My settings" section, ask the us
 - The app is for iPad and iPhone. The tests can't cover camera, microphone, Apple Pencil or real Claude answers; say plainly what was and wasn't tested.
 - Never commit notebook entries, protocols or anything from `CLAUDE.local.md`. Keep `src/index.html` free of any person's name or notebook content, since everyone runs the same file.
 - The notebook database holds real lab records. Don't write test data to it.
+
+## Hooks
+
+Two hooks are registered in `.claude/settings.json` and run as scripts in `tools/hooks/` (Node only, no network). Each script's header lists what it does not catch.
+
+- **Guard on commits and pushes.** Before a `git commit` it stops the command when a staged path is private (the same list as `.gitignore`), when an added line, a staged file's name or the commit message holds a private term, or when the command stages and commits in one go. Before a `git push` it stops a push of `private-archive`: by name, through `--all` or `--mirror`, or under another name.
+- **Tests after app changes.** An edit under `src/`, `tests/` or `tools/` marks the tests as owed for that session. When the session stops, `npm test` runs: a pass is silent, a failure holds the stop once and names the failing tests.
+- **Committing so the guard can see it.** Stage by name in one command (`git add <file> ...`) and commit in the next. `git commit -a`, `git commit <path>` and `git add ... && git commit ...` are refused, because the hook runs before the command and cannot see what it would stage.
+- **Private terms** are read from `.claude/local/private-terms.txt`: one per line, matched without regard to case or accents. A line starting with `!` is a public string a term may be part of (a public account name that contains a surname). The file is git-ignored and exists only on the machine of whoever made it; never copy its contents into a tracked file, a test or a commit message. Without it the guard checks paths only and says so in one line. A finding names the file, the line and the entry number in that file, never the term.
+- When the guard stops something that really belongs in the repository, do not work around it: tell the user, who can commit from their own terminal.
