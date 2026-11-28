@@ -161,10 +161,11 @@ test("guard: what it cannot read it stops, when the command mentions a commit or
 const PRIVATE_SAMPLES = ["data/protocols/x.md", "data/protocols/sub/y.json", "data/entries/abc.json", "data/voice.json", "data/mine.private.json", "docs/decisions.md", "tools/docs/x.md",
   "CLAUDE.local.md", "sub/CLAUDE.local.md", ".claude/settings.local.json", ".claude/local/private-terms.txt", ".claude/worktrees/x/a.txt", "scratch/260310_photos/a.jpg", "scratch/note.txt",
   "photo.png", "tests/fixtures/x.png", "demo/sub/x.png", "rec/memo.m4a", "a.mp3", "a.wav", "a.caf", "a.aac", "a.ogg", "a.flac", "a.webm", "models/ggml-base.bin", "m.gguf",
-  "backups/260310-1800/manifest.json", "backups/260310-1800/documents/logs/daily.json", "backups/assets/made-up-asset.jpg", "sub/backups/listing.json"];
+  "backups/260310-1800/manifest.json", "backups/260310-1800/documents/logs/daily.json", "backups/assets/made-up-asset.jpg", "sub/backups/listing.json",
+  "outputs/260310_master-mix.xlsx", "outputs/260310_gel/lane-1.jpg", "outputs/sub/README.md", "references/index.csv"];
 const PUBLIC_SAMPLES = ["README.md", "CLAUDE.md", "src/index.html", "data/glossary.json", "data/settings.json", "data/private.json", ".claude/settings.json", ".claude/skills/eln-audit/SKILL.md",
   ".claude/agents/photo-reader.md", "scratch/README.md", "demo/entry.png", "tests/fixtures/transfer-run/a.jpg", "tools/hooks/lib.mjs", "package.json", ".gitignore", "mydocs/x.md", "docs.md",
-  "tools/backup/backup.mjs", "tests/backup-tool.test.mjs", ".claude/skills/eln-backup/SKILL.md", "mybackups/x.json", "backups.md"];
+  "tools/backup/backup.mjs", "tests/backup-tool.test.mjs", ".claude/skills/eln-backup/SKILL.md", "mybackups/x.json", "backups.md", "outputs/README.md", "myoutputs/x.txt", "sub/outputs/x.txt", "tools/references/x.md"];
 
 test("private paths are named with a reason; paths that belong in the repository are not", () => {
   for (const path of PRIVATE_SAMPLES) assert.equal(typeof privatePathReason(path), "string", path);

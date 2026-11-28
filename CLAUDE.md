@@ -34,6 +34,11 @@ Load the skill before starting the work; never do it from memory.
 ## Scratch space
 - `scratch/` in this folder is scratch and archive space: save copies of transferred photos there in a dated subfolder (YYMMDD_photos), and use it for any temporary or kept file. Its contents are never committed. Do not leave helper files in it. Deleting there needs the user's permission; otherwise move leftovers to `scratch/_to_delete/`.
 
+## Outputs
+- `outputs/` in this folder holds the files you make when the user asks for a calculation or a plan: dilution and master mix tables, plate layouts, label sheets, primer lists, plans. Save each one there with the date first (`<YYMMDD>_<what it is>.<ext>`, or a dated subfolder for several files), and say where it was saved.
+- When building or editing a Benchling entry, look in `outputs/` for an earlier file on the same experiment and use it. Where it and the notes disagree, the notes say what was done: flag the difference, don't pick silently.
+- Its contents are never committed. Deleting there needs the user's permission.
+
 ## Answering questions from the notes
 Open the relevant entry (search Benchling by title or keyword), read it, and answer from what's written. Quote dates and values exactly. If the notes don't say, say so; don't infer. Also search past chats when the user refers to earlier work.
 

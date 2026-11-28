@@ -24,6 +24,13 @@ CLAUDE.local.md
 scratch/*
 !scratch/README.md
 
+# outputs: files Claude made on request (calculations, plans, layouts); keep the folder, never its contents
+outputs/*
+!outputs/README.md
+
+# reference files of each person's own lab (indexes, lists): never committed
+/references/
+
 # backups of the notebook (the eln-backup skill): the whole database, never committed
 backups/
 

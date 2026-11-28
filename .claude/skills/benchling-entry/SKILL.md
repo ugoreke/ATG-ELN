@@ -10,6 +10,7 @@ The Access rules (which browser, signing in, what not to use), "your settings", 
 ## Before writing anything
 - Open the template or entry and read it in full (page text; tables load lazily, so scroll the whole page first and re-read). Don't ask for information the template has no slot for.
 - Do every calculation the user delegates (dilutions, master mixes, cells per well, n+1 volumes) and show the numbers before entering them.
+- Look in `outputs/` for a file made earlier for this experiment (a calculation, a layout, a plan) and use it rather than redoing the work; say which file you used. Where it and the notes disagree, the notes say what was done: flag the difference. A calculation or plan made as a file while writing the entry is saved there, with the date first in its name (see `CLAUDE.md`).
 - Check the notes for internal conflicts (dates, volumes, counts, passage numbers that don't match earlier records) and raise them in the consolidated list.
 
 ## Creating an entry

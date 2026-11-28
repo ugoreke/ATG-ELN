@@ -62,6 +62,7 @@ The app records; a Claude session does the transfer. Open a Claude Code session 
 - The first time, Claude asks for your Benchling address, project and the email account to search, and saves them in `CLAUDE.local.md`, which stays on your machine.
 - You must be signed in to Benchling in the browser Claude uses; it never types credentials.
 - `scratch/` is working space for these sessions, for example copies of transferred photos. Its contents are never committed.
+- `outputs/` holds the files Claude makes when you ask it for a calculation or a plan (a master mix table, a plate layout, a label sheet). A later session uses them when it writes the matching Benchling entry. Its contents are never committed.
 - If you use a Claude chat project instead of Claude Code, paste `project-instructions.md` into the project's custom instructions.
 
 The skills come from one person's working setup and Benchling layout; expect to adjust the template and naming sections (in `.claude/skills/benchling-entry/SKILL.md`) to yours.

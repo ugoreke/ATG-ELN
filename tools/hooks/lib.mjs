@@ -194,6 +194,8 @@ const PRIVATE_RULES = [
   { why: "local to this machine; under .claude/ only skills/, agents/ and settings.json are shared",
     test: (p, asWritten) => p.startsWith(".claude/") && !asWritten.startsWith(".claude/skills/") && !asWritten.startsWith(".claude/agents/") && asWritten !== ".claude/settings.json" },
   { why: "scratch space is never committed", test: (p, asWritten) => p.startsWith("scratch/") && asWritten !== "scratch/README.md" },
+  { why: "outputs are never committed", test: (p, asWritten) => p.startsWith("outputs/") && asWritten !== "outputs/README.md" },
+  { why: "reference files are private to each copy", test: p => p.startsWith("references/") },
   { why: "a backup holds the whole notebook", test: p => /(^|\/)backups\//.test(p) },
   { why: "images are tracked only in demo/", test: (p, asWritten) => p.endsWith(".png") && !/^demo\/[^/]+\.png$/.test(asWritten) },
   { why: "recordings never belong in the repository", test: p => hasExtension(p, RECORDINGS) },
