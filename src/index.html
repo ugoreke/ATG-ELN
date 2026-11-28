@@ -764,7 +764,7 @@ async function boot() {
     maybeHousekeep();
   }, () => {});
   db.doc("config/glossary").onSnapshot(s => { const d = s.exists ? s.data() : {}; state.glossary = { terms: [...(d.terms || [])] }; window.dispatchEvent(new Event("eln-vocab")); }, () => {});
-  db.doc("config/voice").onSnapshot(s => { if (!voiceWrites) state.voice = normalizeVoice(s.exists ? s.data() : {}); }, () => {});
+  db.doc("config/voice").onSnapshot(s => voiceArrived(s.exists ? s.data() : {}), () => {});
   db.doc("config/settings").onSnapshot(s => { if (s.exists) { Object.assign(state.settings, s.data()); applySkin(state.settings.theme); } state.settingsLoaded = true; maybeHousekeep(); }, () => {});
 }
 function noStore() {
@@ -1221,22 +1221,37 @@ function voiceWithout(voice, changes) {
   for (const c of changes.filter(learnable)) pairs = pairs.map(p => sameVoicePair(c)(p) ? { ...p, n: p.n - 1 } : p).filter(p => p.n > 0);
   return { pairs };
 }
-async function saveVoice(next) {
-  state.voice = next;
-  if (!state.db) return;
+/* The stored list must have arrived before anything is written: an empty local list saved over it would erase what was learned.
+   Until then a change is applied to the local copy and kept; when the list arrives the kept changes are applied to it, in order, and saved. */
+let voiceLoaded = false;
+const voiceWaiting = [];
+async function writeVoice() {
   voiceWrites++;
   /* learning is a bonus: a failed write must not interrupt fixing, so it is dropped on purpose (the local copy still helps this session) */
-  try { await state.db.doc("config/voice").set(next); } catch (_) {} finally { voiceWrites--; }
+  try { await state.db.doc("config/voice").set(state.voice); } catch (_) {} finally { voiceWrites--; }
 }
-const learnChanges = (changes, sure) => { if (changes.some(learnable)) saveVoice(voiceWith(state.voice, changes, new Date().toISOString(), sure)); };
+/* change(voice) -> the new voice */
+function saveVoice(change) {
+  state.voice = change(state.voice);
+  if (!state.db) return;
+  if (!voiceLoaded) { voiceWaiting.push(change); return; }
+  writeVoice();
+}
+function voiceArrived(raw) {
+  const first = !voiceLoaded; voiceLoaded = true;
+  if (first && voiceWaiting.length) { state.voice = voiceWaiting.splice(0).reduce((v, change) => change(v), normalizeVoice(raw)); writeVoice(); return; }
+  if (!voiceWrites) state.voice = normalizeVoice(raw);
+}
+const learnChanges = (changes, sure) => { if (changes.some(learnable)) { const now = new Date().toISOString(); saveVoice(v => voiceWith(v, changes, now, sure)); } };
 /* the user replaced an applied change (or put the word back, next = null): forget the old pair, learn theirs */
 const relearn = (old, next) => {
   if (!learnable(old) && !learnable(next)) return;
-  saveVoice(voiceWith(voiceWithout(state.voice, [old]), next ? [next] : [], new Date().toISOString(), true));
+  const now = new Date().toISOString();
+  saveVoice(v => voiceWith(voiceWithout(v, [old]), next ? [next] : [], now, true));
 };
 const forgetFix = (() => {
   const done = new WeakSet();   /* a fix is taken back once, whether by its own Undo or by Undo all */
-  return res => { if (done.has(res) || !res.changes.some(learnable)) return; done.add(res); saveVoice(voiceWithout(state.voice, res.changes)); };
+  return res => { if (done.has(res) || !res.changes.some(learnable)) return; done.add(res); const changes = res.changes; saveVoice(v => voiceWithout(v, changes)); };
 })();
 /* ---------- sound check: a replacement has to sound like what was written ----------
    This never picks a replacement (terms a letter apart are different things). It only stops one that does not
@@ -2723,7 +2738,7 @@ function openSettings() {
   drawStorage(b);
   const drawLearned = () => { const n = state.voice.pairs.reduce((t, p) => t + p.n, 0); b.querySelector("#vLearned").textContent = `Learned from ${n} correction${n === 1 ? "" : "s"}`; b.querySelector("#vForget").disabled = !n; };
   drawLearned();
-  b.querySelector("#vForget").onclick = ev => armDelete(ev.currentTarget, () => { saveVoice({ pairs: [] }); drawLearned(); toast("Forgot what dictation got wrong."); });
+  b.querySelector("#vForget").onclick = ev => armDelete(ev.currentTarget, () => { saveVoice(() => ({ pairs: [] })); drawLearned(); toast("Forgot what dictation got wrong."); });
   const list = b.querySelector("#vList"), filter = b.querySelector("#vFilter"), input = b.querySelector("#vNew");
   const draw = () => {
     const q = filter.value.trim().toLowerCase(); const terms = state.glossary.terms;

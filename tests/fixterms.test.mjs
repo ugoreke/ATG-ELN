@@ -228,3 +228,26 @@ test("an answer to a question changes the word itself, never the same letters in
   assert.equal(await lineOf(page), "Anne set up the annealing, then Anne checked the channel");
   assert.deepEqual(errors, []);
 });
+
+test("a fix made before the learned list has loaded does not overwrite it: it is added once the list arrives", async () => {
+  const at = "2026-01-01T00:00:00.000Z", SLOW_MS = 2500;
+  const voice = { pairs: [{ heard: "cough", said: "KOLF", n: 4, at }, { heard: "new cliff fiction", said: "nucleofection", n: 2, at, sure: true }] };
+  const { page, errors } = await fixLast({ glossary: ["puromycin"], voice, sampleScript: script({ swap1: RIGHT }), snapshotDelayMs: { "config/voice": SLOW_MS } });
+  assert.equal(await lineOf(page), "added puromycin to the wells", "fixing itself does not wait");
+  assert.deepEqual(await voiceOf(page), [["cough", "KOLF", 4], ["new cliff fiction", "nucleofection", 2]], "nothing is written before the stored list arrived");
+  await page.waitForTimeout(SLOW_MS);
+  assert.deepEqual(await voiceOf(page), [["cough", "KOLF", 4], ["new cliff fiction", "nucleofection", 2], ["pyromycin", "puromycin", 1]]);
+  assert.equal(await page.evaluate(() => window.__store.config.voice.pairs[1].sure), true, "what was stored is kept as it was");
+  await page.tap(".fixnote [data-undo]"); await page.waitForTimeout(250);
+  assert.deepEqual(await voiceOf(page), [["cough", "KOLF", 4], ["new cliff fiction", "nucleofection", 2]]);
+  assert.deepEqual(errors, []);
+});
+
+test("Undo before the learned list has loaded leaves the stored list as it was", async () => {
+  const at = "2026-01-01T00:00:00.000Z", SLOW_MS = 2500;
+  const voice = { pairs: [{ heard: "pyromycin", said: "puromycin", n: 3, at }] };
+  const { page, errors } = await fixLast({ glossary: ["puromycin"], voice, sampleScript: script({ swap1: RIGHT }), snapshotDelayMs: { "config/voice": SLOW_MS } });
+  await page.tap(".fixnote [data-undo]"); await page.waitForTimeout(SLOW_MS + 200);
+  assert.deepEqual(await voiceOf(page), [["pyromycin", "puromycin", 3]]);
+  assert.deepEqual(errors, []);
+});

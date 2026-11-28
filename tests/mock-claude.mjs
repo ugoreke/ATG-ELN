@@ -17,6 +17,7 @@
 //   assetUsage                    { bytes, files, maxBytes, maxFiles }: storage already used and the quota (default 1 GiB, 5000 files)
 //   assetFailCalls                which upload calls reject once with store_unavailable, counted from 1, e.g. [2]
 //   assetDelayMs                  make each upload take this long
+//   snapshotDelayMs               { "config/voice": 1500 }: that document's first snapshot arrives this late (a slow connection)
 //                                 tests drive it with window.__dict.emit("partial"|"final"|"state", payload); window.__dict.calls lists start/stop
 export function installMock(opts) {
   const freeze = o => { if (o && typeof o === "object") { Object.values(o).forEach(freeze); Object.freeze(o); } return o; };
@@ -37,7 +38,7 @@ export function installMock(opts) {
     collection: c => ({ onSnapshot: f => { (L[c] = L[c] || []).push(f); fire(c); return () => {}; } }),
     doc: p => { const [c, id] = p.split("/"); return {
       get: async () => ({ id, exists: !!store[c][id], data: () => (store[c][id] ? clone(store[c][id]) : undefined) }),
-      onSnapshot: f => { (D[p] = D[p] || []).push(f); fire(c); return () => {}; },
+      onSnapshot: f => { const listen = () => { (D[p] = D[p] || []).push(f); fire(c); }; const late = (opts.snapshotDelayMs || {})[p]; if (late) setTimeout(listen, late); else listen(); return () => {}; },
       set: async d => {
         if (!failedSet && (opts.failSetOnce === p || (opts.failSetOnce || "").endsWith("/*") && p.startsWith(opts.failSetOnce.slice(0, -1)))) { failedSet = true; throw { code: "unavailable", message: "offline" }; }
         store[c][id] = JSON.parse(JSON.stringify(d)); fire(c);
