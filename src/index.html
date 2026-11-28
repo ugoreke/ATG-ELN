@@ -167,8 +167,13 @@ audio.memo-player{display:block;width:100%;max-width:72ch}
 .fixnote .help{flex-basis:100%;color:var(--muted);font-size:.85rem}
 .unsure{flex-basis:100%;min-width:0;max-width:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--warn-soft);color:var(--ink)}
 .unsure .q{flex-basis:100%;font-size:.95rem}
-.unsure .btn{min-height:46px;white-space:normal;text-align:left}
+.unsure .btn{min-height:46px;white-space:normal;overflow-wrap:anywhere;text-align:left}
 .unsure .other{display:flex;gap:6px;flex:1 1 220px;min-width:0}
+.fixnote .chgs{display:flex;flex-wrap:wrap;gap:8px;align-items:center;min-width:0;max-width:100%}
+.fixnote .chg{white-space:normal;overflow-wrap:anywhere;text-align:left;justify-content:flex-start;height:auto;padding:8px 14px;font-weight:500;color:var(--ink)}
+.fixnote .chg .i{flex:none;opacity:.7}
+.fixnote .fixslot{flex-basis:100%;min-width:0;max-width:100%}
+.fixnote .fixslot:empty{display:none}
 .unsure .other input{flex:1;width:0;min-width:0;min-height:46px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);padding:0 12px}
 
 /* composer */
@@ -434,6 +439,7 @@ const ICON = {
   plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
   x: '<svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>',
   check: '<svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  edit: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
   fix: '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.6L18.5 9l-4.7 1.8L12 15.5l-1.8-4.7L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
   read: '<svg class="i" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 20h6"/></svg>',
@@ -1200,11 +1206,13 @@ function normalizeVoice(raw) {
 /* a change tells us about his voice only if the letters differ; case, spacing, punctuation and "200 G" → "200 × g" tidying do not */
 const learnable = c => !!c && typeof c.from === "string" && typeof c.to === "string" && !!voiceLetters(c.from) && voiceLetters(c.from) !== voiceLetters(c.to);
 const sameVoicePair = c => p => p.heard === voiceKey(c.from) && p.said === c.to.trim();
-function voiceWith(voice, changes, now) {
+/* sure: the user picked or typed this pair; such a pair is never questioned by the sound check again */
+function voiceWith(voice, changes, now, sure) {
+  const mark = sure ? { sure: true } : {};
   let pairs = voice.pairs;
   for (const c of changes.filter(learnable)) {
     const found = pairs.some(sameVoicePair(c));
-    pairs = found ? pairs.map(p => sameVoicePair(c)(p) ? { ...p, n: p.n + 1, at: now } : p) : [...pairs, { heard: voiceKey(c.from), said: c.to.trim(), n: 1, at: now }];
+    pairs = found ? pairs.map(p => sameVoicePair(c)(p) ? { ...p, n: p.n + 1, at: now, ...mark } : p) : [...pairs, { heard: voiceKey(c.from), said: c.to.trim(), n: 1, at: now, ...mark }];
   }
   return { pairs: pairs.length > VOICE_MAX_PAIRS ? [...pairs].sort(voiceRank).slice(0, VOICE_MAX_PAIRS) : pairs };
 }
@@ -1220,13 +1228,93 @@ async function saveVoice(next) {
   /* learning is a bonus: a failed write must not interrupt fixing, so it is dropped on purpose (the local copy still helps this session) */
   try { await state.db.doc("config/voice").set(next); } catch (_) {} finally { voiceWrites--; }
 }
-const learnChanges = changes => { if (changes.some(learnable)) saveVoice(voiceWith(state.voice, changes, new Date().toISOString())); };
+const learnChanges = (changes, sure) => { if (changes.some(learnable)) saveVoice(voiceWith(state.voice, changes, new Date().toISOString(), sure)); };
+/* the user replaced an applied change (or put the word back, next = null): forget the old pair, learn theirs */
+const relearn = (old, next) => {
+  if (!learnable(old) && !learnable(next)) return;
+  saveVoice(voiceWith(voiceWithout(state.voice, [old]), next ? [next] : [], new Date().toISOString(), true));
+};
 const forgetFix = (() => {
   const done = new WeakSet();   /* a fix is taken back once, whether by its own Undo or by Undo all */
   return res => { if (done.has(res) || !res.changes.some(learnable)) return; done.add(res); saveVoice(voiceWithout(state.voice, res.changes)); };
 })();
+/* ---------- sound check: a replacement has to sound like what was written ----------
+   This never picks a replacement (terms a letter apart are different things). It only stops one that does not
+   sound like the original, and turns it into a question. */
+const SOUND_CLASS = { b: "P", p: "P", f: "F", v: "F", c: "K", g: "K", j: "K", k: "K", q: "K", s: "S", z: "S", d: "T", t: "T", l: "L", m: "N", n: "N", r: "R" };
+const SOUND_MIN_CODE = 4;      /* shorter than this many consonant sounds and digits: too little to judge */
+const SOUND_SAME = 0.85;       /* at or above: the same sounds */
+const SOUND_FAR = 0.5;         /* at or below, while another vocabulary term sounds the same: ask */
+const SOUND_UNRELATED = 0.4;   /* below, for a single word: ask */
+const SOUND_GUESS = 0.7;       /* vocabulary terms offered when correcting a change */
+const SOUND_EVIDENCE = 0.5;    /* a learned pair below this says nothing about the speaker's voice */
+/* consonant sounds and digits in order: vowels, h, w, y and anything in brackets dropped, doubles merged */
+const soundCode = s => String(s).toLowerCase().normalize("NFD").replace(/\([^)]*\)/g, " ").replace(/[^a-z0-9]/g, "")
+  .replace(/ph/g, "f").replace(/c(?=[eiy])/g, "s").replace(/x/g, "ks").replace(/[a-z]/g, ch => SOUND_CLASS[ch] || "").replace(/(.)\1+/g, "$1");
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) row.push(Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)));
+    prev = row;
+  }
+  return prev[b.length];
+}
+const soundsLike = (a, b) => { const x = soundCode(a), y = soundCode(b); return x && y ? 1 - editDistance(x, y) / Math.max(x.length, y.length) : 0; };
+const bareTerm = t => String(t).replace(/\s*\([^)]*\)/g, "").trim();
+/* vocabulary terms that sound like the words, closest first, leaving out the family of `not` */
+function soundAlikes(words, not, min) {
+  if (soundCode(words).length < SOUND_MIN_CODE) return [];
+  return state.glossary.terms.filter(t => soundsLike(t, not) < SOUND_SAME).map(t => [bareTerm(t), soundsLike(words, t)])
+    .filter(x => x[0] && x[1] >= min).sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
+}
+const confirmedPair = c => state.voice.pairs.some(p => p.sure && sameVoicePair(c)(p));
+/* null: the change is fine. Otherwise the vocabulary terms that sound closer (possibly none): ask instead of applying. */
+function doubtful(c) {
+  if (!learnable(c) || confirmedPair(c)) return null;
+  if (soundCode(c.from).length < SOUND_MIN_CODE || soundCode(c.to).length < SOUND_MIN_CODE) return null;
+  const sim = soundsLike(c.from, c.to), closer = soundAlikes(c.from, c.to, SOUND_SAME);
+  if (sim <= SOUND_FAR && closer.length) return closer;
+  return sim < SOUND_UNRELATED && !/\s/.test(c.from.trim()) ? [] : null;
+}
+/* Where the words stand in the text as whole words, whatever their case: "Ann" is not found inside "annealing". */
+const isWordChar = ch => !!ch && /[\p{L}\p{N}]/u.test(ch);
+function wordSpots(t, w) {
+  const low = t.toLowerCase(), x = String(w || "").toLowerCase(), spots = [];
+  if (!x || low.length !== t.length) return spots;
+  for (let i = low.indexOf(x); i >= 0; i = low.indexOf(x, i + x.length)) if (!isWordChar(t[i - 1]) && !isWordChar(t[i + x.length])) spots.push(i);
+  return spots;
+}
+const countOf = (t, w) => wordSpots(t, w).length;
+const asWritten = (t, w) => { const [i] = wordSpots(t, w); return i === undefined ? "" : t.slice(i, i + w.length); };
+const swapAll = (t, from, to) => wordSpots(t, from).reduceRight((x, i) => x.slice(0, i) + to + x.slice(i + from.length), t);
+const applyChanges = (t, changes) => changes.reduce((x, c) => swapAll(x, c.from, c.to), t);
+/* Take doubtful changes back out of a pass's result and list them as questions, the closer terms first.
+   input is the text the pass was given. A refused change must leave its words exactly as they were, and must never
+   touch the same term standing elsewhere in the line: so the line is rebuilt from input with the accepted changes
+   only. Where the pass's text is not simply its listed changes, a change is taken back only if the term it wrote is
+   new to the line and stands once for each place the original words stood; otherwise it stays, shown and correctable. */
+function soundCheck(res, input) {
+  const judged = res.changes.map(c => ({ c, closer: doubtful(c) }));
+  if (!judged.some(j => j.closer)) return { ...res, unsure: res.unsure || [] };
+  const rebuilt = applyChanges(input, res.changes) === res.text;
+  const refused = judged.filter(j => j.closer && countOf(input, j.c.from) && (rebuilt || (!countOf(input, j.c.to) && !countOf(res.text, j.c.from) && countOf(res.text, j.c.to) === countOf(input, j.c.from))));
+  const changes = res.changes.filter(c => !refused.some(j => j.c === c));
+  const text = rebuilt ? applyChanges(input, changes) : refused.reduce((t, j) => swapAll(t, j.c.to, asWritten(input, j.c.from)), res.text);
+  const asked = refused.map(j => ({ words: asWritten(input, j.c.from), guesses: [...j.closer.slice(0, 2), j.c.to] }));
+  return { ...res, text, changes, unsure: [...asked, ...(res.unsure || [])] };
+}
+const UNSURE_MAX = 4;   /* questions taken from one answer of Claude's; a refused change is always asked */
+const realChange = c => !!c && typeof c.from === "string" && typeof c.to === "string" && !!c.from && c.from !== c.to;
+function readUnsure(list, text, max = UNSURE_MAX) {
+  const low = text.toLowerCase(), seen = new Set();
+  return (Array.isArray(list) ? list : []).filter(u => u && u.words && low.includes(String(u.words).toLowerCase()))
+    .map(u => ({ words: String(u.words), guesses: (Array.isArray(u.guesses) ? u.guesses : []).map(String).filter(g => g && g.toLowerCase() !== String(u.words).toLowerCase()).slice(0, 3) }))
+    .filter(u => !seen.has(u.words.toLowerCase()) && seen.add(u.words.toLowerCase())).slice(0, max);
+}
+const voiceEvidence = p => p.sure || soundCode(p.heard).length < SOUND_MIN_CODE || soundCode(p.said).length < SOUND_MIN_CODE || soundsLike(p.heard, p.said) >= SOUND_EVIDENCE;
 function voiceNotes() {
-  const top = [...state.voice.pairs].sort(voiceRank).slice(0, VOICE_PROMPT_PAIRS);
+  const top = state.voice.pairs.filter(voiceEvidence).sort(voiceRank).slice(0, VOICE_PROMPT_PAIRS);
   if (!top.length) return "";
   return `How dictation has misheard this speaker before (heard → what he said, times seen). This is evidence about his voice and accent, not a replacement table: use it only when the sentence at hand makes sense with the swap, and keep the vocabulary above as the reference.
 ${top.map(p => `${p.heard} → ${p.said} (${p.n})`).join("\n")}`;
@@ -1239,9 +1327,10 @@ async function termPass(text) {
 The lab vocabulary below is the reference. Do not trust what dictation wrote. Read the line aloud in your head and, for every word or run of words, ask which vocabulary term the speaker most likely SAID, judging by sound and by what makes sense at the bench. Replace the words with that term, spelled exactly as in the vocabulary. Examples of the kind of match to make: "cough NGN2" or "golf engine two" → KOLF-NGN2; "a cute ace" → Accutase; "mature gel" → Matrigel; "cast nine" → Cas9; "piggy back" → PiggyBac. These are examples only; apply the same sound-matching to every vocabulary term, including ones never misheard before. A term may be split across several words ("new cliff fiction" → nucleofection), merged into one, or have letters and digits spelled out. Write plasmid, sample and line IDs the way the vocabulary does, dropping spaces and leading zeros a dictation added ("PAS 0016" → PAS16, "coal f 2.1 J" → KOLF2.1J).
 A listed term stands for its whole word family, so "nucleofector" also covers nucleofection, nucleofected and nucleofecting; an entry likewise covers plurals, and hyphen, space and capitalisation variants, and any words in brackets after a term belong to that entry. Write whichever form fits the sentence.
 Prefer a vocabulary term whenever a word is out of place in a lab sentence and sounds close to one. You may also write a standard, widely used term from stem-cell or molecular-biology work that is not listed, but only where the sound match is unmistakable; never invent a name that is not real. Terms that differ by only a letter or two are different things (trypsin and trypan, PAS16 and PAS18, JF549 and JF646), so match the sounds across the whole word rather than snapping to the nearest spelling.
-Leave ordinary words that make sense as they are, and leave anything with no plausible match unchanged.
+Every replacement must sound like the words it replaces when both are said aloud: the same consonant sounds in the same order, give or take one. A term that only fits the topic of the sentence, or shares a few letters, is the wrong answer. A word that is a real term of the field spelled correctly, or one or two letters away from one (a drug, reagent, gene, kit or instrument), is that term: write it correctly spelled, whether it is listed or not listed, and never trade it for a listed term that sounds different.
+Leave ordinary words that make sense as they are, and leave anything with no plausible match unchanged. When a word is clearly wrong but no term sounds like it, or two terms sound about equally close, do not choose: leave the words exactly as written and list them under "unsure" with up to three likely readings, best first.
 Also tidy units and numbers ("micro liters" → "µl", "200 G" → "200 × g", "37 C" → "37 °C"). Keep the author's wording and order otherwise. Do not add, remove or reinterpret content.
-Return only JSON: {"text": "<corrected line>", "changes": [{"from": "<original words>", "to": "<corrected words>"}]}
+Return only JSON: {"text": "<corrected line>", "changes": [{"from": "<original words>", "to": "<corrected words>"}], "unsure": [{"words": "<exact words as they appear in the corrected line>", "guesses": ["...", "..."]}]}
 
 ${vocab()}
 
@@ -1256,7 +1345,8 @@ Line to correct:
 <<<${text}>>>`;
   const r = await state.sample(prompt, { ...modelOpts(state.settings.fixModel), cache: false });
   const j = parseJSON(r.text);
-  return { text: typeof j.text === "string" ? j.text : text, changes: Array.isArray(j.changes) ? j.changes.filter(c => c && c.from !== c.to) : [], by: answeredBy(r) };
+  const out = typeof j.text === "string" ? j.text : text;
+  return { text: out, changes: Array.isArray(j.changes) ? j.changes.filter(realChange) : [], unsure: readUnsure(j.unsure, out), by: answeredBy(r) };
 }
 /* pass 2: read the corrected line against the whole entry; fix what context makes clear, ask about the rest */
 async function contextPass(text) {
@@ -1265,7 +1355,7 @@ async function contextPass(text) {
     .sort((a, b) => (b[1].updatedAt || "").localeCompare(a[1].updatedAt || "")).slice(0, 15).map(([, x]) => x.title).join("; ");
   const prompt = `This is a second, context check on one line of a stem-cell and molecular-biology lab notebook. Lab terms in the line were already corrected against the vocabulary. Now read it the way the scientist who wrote it would, together with the rest of the entry, and find words that still don't make sense there. They are almost always dictation errors that sound like the intended words.
 
-- Fix a word only when the context makes the intended word clear: a culture step that only makes sense as one specific operation, or a name, sample or term that the entry, other entry titles, the protocols or the vocabulary spell correctly elsewhere. Match by sound.
+- Fix a word only when the context makes the intended word clear: a culture step that only makes sense as one specific operation, or a name, sample or term that the entry, other entry titles, the protocols or the vocabulary spell correctly elsewhere. Match by sound: the replacement must sound like what was written. If the context points to a word that does not sound like it, do not write it; list the words under "unsure" with that word as a reading.
 - When words still look wrong but the context doesn't settle what was meant (often a person, a collaborator, a company, an assay or an instrument that isn't in the vocabulary), leave them unchanged and list them under "unsure" with up to three likely readings, best first. Readings may be names or terms you know from the field.
 - Don't rephrase, don't fix grammar, punctuation or style, and don't touch anything that already makes sense. Most lines need no change and nothing in "unsure".
 Return only JSON: {"text": "<line>", "changes": [{"from": "<original words>", "to": "<corrected words>"}], "unsure": [{"words": "<exact words as they appear in the line>", "guesses": ["...", "..."]}]}
@@ -1285,19 +1375,18 @@ Line to check:
   const out = typeof j.text === "string" && j.text.trim() ? j.text : text;
   return {
     text: out, by: answeredBy(r),
-    changes: Array.isArray(j.changes) ? j.changes.filter(c => c && c.from && c.from !== c.to) : [],
-    unsure: (Array.isArray(j.unsure) ? j.unsure : []).filter(u => u && u.words && out.toLowerCase().includes(String(u.words).toLowerCase()))
-      .map(u => ({ words: String(u.words), guesses: (Array.isArray(u.guesses) ? u.guesses : []).map(String).filter(g => g && g.toLowerCase() !== String(u.words).toLowerCase()).slice(0, 3) })).slice(0, 4)
+    changes: Array.isArray(j.changes) ? j.changes.filter(realChange) : [],
+    unsure: readUnsure(j.unsure, out)
   };
 }
 async function fixText(text) {
-  const a = await termPass(text);
+  const a = soundCheck(await termPass(text), text);
   try {
-    const b = await contextPass(a.text);
-    return { text: b.text, changes: a.changes.concat(b.changes), unsure: b.unsure, by: a.by };
+    const b = soundCheck(await contextPass(a.text), a.text);
+    return { text: b.text, changes: a.changes.concat(b.changes), unsure: readUnsure([...a.unsure, ...b.unsure], b.text, Infinity), by: a.by };
   } catch (err) {
     if (err && err.code === "not_granted") throw err;
-    return { ...a, unsure: [], note: "The context check didn't run this time." };
+    return { ...a, note: "The context check didn't run this time." };
   }
 }
 /* A long transcript is fixed a few sentences at a time, so each call stays small; the pieces are put back with their own spacing. */
@@ -1318,7 +1407,6 @@ async function fixLong(text) {
   }
   return out;
 }
-const swapWords = (t, from, to) => { const i = t.toLowerCase().indexOf(from.toLowerCase()); return i < 0 ? t : t.slice(0, i) + to + t.slice(i + from.length); };
 async function addVocabTerm(t) {
   t = t.trim(); if (!t || !state.db) return false;
   if (state.glossary.terms.some(x => x.toLowerCase() === t.toLowerCase())) { toast(`“${t}” is already in the vocabulary.`); return true; }
@@ -1329,27 +1417,78 @@ async function addVocabTerm(t) {
 /* el: the note; undo(): restore the original; apply(fn): change the current text with fn(text) */
 function showFixNote(el, res, undo, apply) {
   el.hidden = false; learnChanges(res.changes);
-  const list = res.changes.length ? res.changes.map(c => `${esc(c.from)} → <b>${esc(c.to)}</b>`).join(", ") : (res.unsure.length ? "No sure changes" : "No changes needed");
-  el.innerHTML = `${ICON.check}<span>${list}</span><span class="mono">${esc(res.by)}</span>` + (res.changes.length ? `<button class="btn small" data-undo>${ICON.undo}Undo</button>` : "")
-    + (res.note ? `<span class="help">${esc(res.note)}</span>` : "")
+  el.innerHTML = `${ICON.check}<span class="chgs"></span><span class="mono">${esc(res.by)}</span><button class="btn small" data-undo hidden>${ICON.undo}Undo</button>`
+    + (res.note ? `<span class="help">${esc(res.note)}</span>` : "") + `<div class="fixslot"></div>`
     + res.unsure.map((u, i) => `<div class="unsure" data-u="${i}"><span class="q">Not sure about <b>“${esc(u.words)}”</b>. Did you mean</span>
         ${u.guesses.map(g => `<button class="btn small" data-g="${esc(g)}">${esc(g)}</button>`).join("")}
-        <form class="other"><input aria-label="What you meant by ${esc(u.words)}" placeholder="Something else" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"><button class="btn small" type="submit">Use</button></form>
+        ${otherForm(u.words)}
         <button class="btn small ghost" data-keep>It's right</button></div>`).join("");
-  el.querySelector("[data-undo]")?.addEventListener("click", () => { undo(); forgetFix(res); el.hidden = true; });
-  el.querySelectorAll(".unsure").forEach(row => {
+  const slot = el.querySelector(".fixslot");
+  /* Replace `from` with `to` in the current text. every: all the places (a misheard word means the same each time).
+     Otherwise the words must stand exactly once, so a correction can never land on another, rightful use of the term.
+     false (and a message) when nothing was changed. */
+  const swapIn = (from, to, every) => {
+    let n = 0;
+    apply(t => { n = countOf(t, from); return n && (every || n === 1) ? swapAll(t, from, to) : t; });
+    if (!n) toast(`“${from}” is no longer in the line, so nothing was changed.`, 6000);
+    else if (!every && n > 1) toast(`“${from}” is in the line ${n} times, so the app can't tell which one to change. Tap the line and edit it by hand.`, 8000);
+    return n > 0 && (every || n === 1);
+  };
+  const changed = (row, from, to, typed) => {
+    row.innerHTML = `<span class="q">Changed “${esc(from)}” to <b>${esc(to)}</b>.</span><button class="btn small" data-addv>${ICON.plus}Add “${esc(to)}” to vocabulary</button>`;
+    const add = row.querySelector("[data-addv]"); add.onclick = async () => { if (await addVocabTerm(to)) add.remove(); };
+    if (typed) add.click();   /* a word you typed yourself is new to the app: keep it */
+  };
+  /* every applied change is a button: tap it to change the correction to another word, or to put the word back */
+  const drawChanges = () => {
+    const box = el.querySelector(".chgs");
+    box.innerHTML = res.changes.length
+      ? res.changes.map((c, i) => `<button class="btn small chg" data-chg="${i}" aria-label="Change the correction of ${esc(c.from)}"><span>${esc(c.from)} → <b>${esc(c.to)}</b></span>${ICON.edit}</button>`).join("")
+      : (res.unsure.length ? "No sure changes" : "No changes needed");
+    box.querySelectorAll("[data-chg]").forEach(b => b.onclick = () => openChange(+b.dataset.chg));
+    el.querySelector("[data-undo]").hidden = !res.changes.length;
+  };
+  const openChange = i => {
+    const c = res.changes[i]; if (!c) return;
+    slot.innerHTML = `<div class="unsure fixrow"><span class="q">“${esc(c.from)}” was changed to <b>${esc(c.to)}</b>. Change it to</span>
+      ${soundAlikes(c.from, c.to, SOUND_GUESS).map(g => `<button class="btn small" data-g="${esc(g)}">${esc(g)}</button>`).join("")}
+      ${otherForm(c.from)}
+      <button class="btn small ghost" data-back>Put “${esc(c.from)}” back</button></div>`;
+    const row = slot.firstElementChild;
+    const putBack = () => {
+      if (!swapIn(c.to, c.from)) return;
+      relearn(c, null);
+      res.changes = res.changes.filter((_, k) => k !== i);
+      drawChanges(); slot.innerHTML = "";
+    };
+    const correct = (to, typed) => {
+      if (to === c.to) return;
+      if (to.toLowerCase() === c.from.toLowerCase()) return putBack();
+      if (!swapIn(c.to, to)) return;
+      relearn(c, { from: c.from, to });
+      res.changes = res.changes.map((x, k) => k === i ? { from: c.from, to } : x);
+      drawChanges(); changed(row, c.from, to, typed);
+    };
+    row.querySelectorAll("[data-g]").forEach(b => b.onclick = () => correct(b.dataset.g, false));
+    row.querySelector("form.other").addEventListener("submit", ev => { ev.preventDefault(); const v = ev.target.querySelector("input").value.trim(); if (v) correct(v, true); });
+    row.querySelector("[data-back]").onclick = putBack;
+  };
+  drawChanges();
+  el.querySelector("[data-undo]").addEventListener("click", () => { undo(); forgetFix(res); el.hidden = true; });
+  el.querySelectorAll(".unsure[data-u]").forEach(row => {
     const u = res.unsure[+row.dataset.u];
     const done = (to, typed) => {
-      apply(t => swapWords(t, u.words, to)); learnChanges([{ from: u.words, to }]);
-      row.innerHTML = `<span class="q">Changed “${esc(u.words)}” to <b>${esc(to)}</b>.</span><button class="btn small" data-addv>${ICON.plus}Add “${esc(to)}” to vocabulary</button>`;
-      const add = row.querySelector("[data-addv]"); add.onclick = async () => { if (await addVocabTerm(to)) add.remove(); };
-      if (typed) add.click();   /* a word you typed yourself is new to the app: keep it */
+      if (!swapIn(u.words, to, true)) return;
+      learnChanges([{ from: u.words, to }], true);
+      res.changes = [...res.changes, { from: u.words, to }];   /* now an applied change: shown above, where it can be corrected or undone */
+      drawChanges(); changed(row, u.words, to, typed);
     };
     row.querySelectorAll("[data-g]").forEach(b => b.onclick = () => done(b.dataset.g, false));
     row.querySelector("form.other").addEventListener("submit", ev => { ev.preventDefault(); const v = ev.target.querySelector("input").value.trim(); if (v) done(v, true); });
     row.querySelector("[data-keep]").onclick = () => row.remove();
   });
 }
+const otherForm = words => `<form class="other"><input aria-label="What you meant by ${esc(words)}" placeholder="Something else" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done"><button class="btn small" type="submit">Use</button></form>`;
 async function fixComposer(auto) {
   if (!state.sample) return;
   const ta = $("#compTa"); const before = ta.value.trim(); if (!before) { if (!auto) ta.focus(); return; }
